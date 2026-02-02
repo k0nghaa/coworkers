@@ -9,12 +9,7 @@ const nextConfig: NextConfig = {
   generateEtags: true,
   poweredByHeader: false,
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    remotePatterns: [],
   },
   turbopack: {
     rules: {
