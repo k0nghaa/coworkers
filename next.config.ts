@@ -9,7 +9,13 @@ const nextConfig: NextConfig = {
   generateEtags: true,
   poweredByHeader: false,
   images: {
-    remotePatterns: [],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "sprint-fe-project.s3.ap-northeast-2.amazonaws.com",
+        pathname: "/Coworkers/user/**",
+      },
+    ],
   },
   turbopack: {
     rules: {
