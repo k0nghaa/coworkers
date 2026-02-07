@@ -44,7 +44,10 @@ const BaseModal = ({
   if (typeof window === "undefined") return null;
 
   const modalContent = (
-    <div className="fixed inset-0 z-50 flex sm:items-center items-end justify-center sm:p-16 p-0">
+    <div
+      className="fixed inset-0 z-50 flex sm:items-center items-end justify-center sm:p-16 p-0"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* 오버레이 */}
       <div
         className="absolute inset-0 bg-black/50"
