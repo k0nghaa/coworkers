@@ -7,9 +7,10 @@
 >
 > #### 🧩 개인 리팩토링 로그
 >
-> _상세 로그: **docs/REFACTOR_LOG.md** 참고_
+> _상세 로그: [docs/REFACTOR_LOG.md](./docs/REFACTOR_LOG.md) 참고_
 >
 > - (설정) next/image 외부 이미지 정책 조정 및 폴백 처리
+> - (/tasklist) 삭제 실패 시 URL 유지 / 모달 클릭 이벤트 전파 차단
 
 ## 📖 프로젝트 소개
 
