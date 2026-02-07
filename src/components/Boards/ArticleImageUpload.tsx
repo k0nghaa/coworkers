@@ -11,6 +11,32 @@ interface ArticleImageProps {
   onChange: (file: File | null, previewUrl: string | null) => void;
 }
 
+const S3_HOSTNAME = "sprint-fe-project.s3.ap-northeast-2.amazonaws.com";
+const S3_PATH_PREFIX = "/Coworkers/";
+
+function isAllowedNextImageUrl(url: string): boolean {
+  if (url.startsWith("/")) return true;
+  if (url.startsWith("blob:") || url.startsWith("data:")) return false;
+
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.hostname === S3_HOSTNAME &&
+      parsed.pathname.startsWith(S3_PATH_PREFIX)
+    ) {
+      return true;
+    }
+
+    if (typeof window !== "undefined") {
+      return parsed.hostname === window.location.hostname;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 // 이미지 용량 제한 10mb로 임시 설정하였습니다.
 const MAXSIZE = 10 * 1024 * 1024;
 
@@ -20,6 +46,8 @@ function ArticleImageUpload({ image = null, onChange }: ArticleImageProps) {
   const { processedUrl, isLoading, error, isSvg } = useSvgImage(
     image ?? undefined
   );
+  const shouldUseNextImage =
+    !isSvg && processedUrl ? isAllowedNextImageUrl(processedUrl) : false;
 
   const handleImageClick = () => {
     if (!image) {
@@ -91,17 +119,25 @@ function ArticleImageUpload({ image = null, onChange }: ArticleImageProps) {
               <span className="text-xs">이미지 로드 실패</span>
             </div>
           ) : isSvg ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={processedUrl}
               alt="preview image"
               className="w-full h-full object-cover"
             />
-          ) : (
+          ) : shouldUseNextImage ? (
             <Image
               src={processedUrl}
               alt="preview image"
               fill
               className="object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={processedUrl}
+              alt="preview image"
+              className="w-full h-full object-cover"
             />
           )}
           <div
