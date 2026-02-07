@@ -280,6 +280,7 @@ export default function TaskListPageContainer({
       // Rollback
       setSelectedTaskListData(originalData);
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
+      return;
     }
 
     const params = new URLSearchParams(searchParams);
