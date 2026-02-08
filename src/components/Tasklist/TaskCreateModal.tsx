@@ -31,6 +31,7 @@ interface TaskCreateModalProps {
   onClose: () => void;
   onSubmit: (values: CreateTaskForm) => void;
   taskToEdit?: TaskForEdit | null;
+  isPending?: boolean;
 }
 
 const WEEK_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -40,6 +41,7 @@ export default function TaskCreateModal({
   onClose,
   onSubmit,
   taskToEdit,
+  isPending = false,
 }: TaskCreateModalProps) {
   const today = new Date();
   const isEditMode = !!taskToEdit;
@@ -124,6 +126,8 @@ export default function TaskCreateModal({
 
   const submitHandler = async (form: CreateTaskForm) => {
     try {
+      if (isPending) return;
+
       // 유효성 검사
       if (
         form.frequencyType === "WEEKLY" &&
@@ -335,7 +339,8 @@ export default function TaskCreateModal({
         primaryButton={{
           label: isEditMode ? "수정하기" : "만들기",
           onClick: handleSubmit(submitHandler),
-          disabled: !isValid,
+          disabled: !isValid || isPending,
+          loading: isPending,
         }}
       />
     </BaseModal>

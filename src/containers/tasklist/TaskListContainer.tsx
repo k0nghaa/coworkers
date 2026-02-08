@@ -49,6 +49,9 @@ export default function TaskListPageContainer({
     useState<GetTaskListResponse | null>(null); // 선택된 것
   const [editTaskId, setEditTaskId] = useState<number | null>(null);
   const [isGroupLoading, setIsGroupLoading] = useState(true);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<number>>(
+    () => new Set()
+  );
 
   const openTaskId = searchParams.get("task");
   const openTask = selectedTaskListData?.tasks.find(
@@ -58,6 +61,26 @@ export default function TaskListPageContainer({
   const editingTask = useMemo(() => {
     return selectedTaskListData?.tasks.find((t) => t.id === editTaskId) ?? null;
   }, [selectedTaskListData, editTaskId]);
+
+  const isPending = (taskId: number) => pendingTaskIds.has(taskId);
+
+  const startPending = (taskId: number) => {
+    setPendingTaskIds((prev) => {
+      if (prev.has(taskId)) return prev;
+      const next = new Set(prev);
+      next.add(taskId);
+      return next;
+    });
+  };
+
+  const endPending = (taskId: number) => {
+    setPendingTaskIds((prev) => {
+      if (!prev.has(taskId)) return prev;
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  };
 
   // 사이드바 열릴 때 배경 스크롤 방지
   useEffect(() => {
@@ -148,6 +171,7 @@ export default function TaskListPageContainer({
   // Task 완료 토글
   const handleTaskToggle = async (taskId: number) => {
     if (!selectedTaskListData) return;
+    if (isPending(taskId)) return;
 
     const targetTask = selectedTaskListData.tasks.find(
       (task) => task.id === taskId
@@ -158,6 +182,7 @@ export default function TaskListPageContainer({
 
     // 원본 데이터 저장 (rollback용)
     const originalData = selectedTaskListData;
+    startPending(taskId);
 
     // 낙관적 업데이트
     setSelectedTaskListData({
@@ -195,15 +220,19 @@ export default function TaskListPageContainer({
       // Rollback
       setSelectedTaskListData(originalData);
       toast.error("완료 상태 변경 중 오류가 발생했습니다.");
+    } finally {
+      endPending(taskId);
     }
   };
 
   // Task 업데이트
   const handleUpdateTask = async (taskId: number, updates: Partial<Task>) => {
     if (!selectedTaskListData) return;
+    if (isPending(taskId)) return;
 
     // 원본 데이터 저장 (rollback용)
     const originalData = selectedTaskListData;
+    startPending(taskId);
 
     // 낙관적 업데이트
     setSelectedTaskListData({
@@ -233,6 +262,8 @@ export default function TaskListPageContainer({
       // Rollback
       setSelectedTaskListData(originalData);
       toast.error("할 일 수정 중 오류가 발생했습니다.");
+    } finally {
+      endPending(taskId);
     }
 
     setEditTaskId(null);
@@ -244,9 +275,11 @@ export default function TaskListPageContainer({
     recurringId: number;
   }) => {
     if (!selectedTaskListData) return;
+    if (isPending(task.id)) return;
 
     // 원본 데이터 저장 (rollback용)
     const originalData = selectedTaskListData;
+    startPending(task.id);
 
     // 낙관적 업데이트
     setSelectedTaskListData({
@@ -284,6 +317,8 @@ export default function TaskListPageContainer({
       setSelectedTaskListData(originalData);
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
       return;
+    } finally {
+      endPending(task.id);
     }
 
     const params = new URLSearchParams(searchParams);
@@ -465,6 +500,7 @@ export default function TaskListPageContainer({
                         onDeleteTask={handleDeleteTask}
                         onEditTask={handleEditTask}
                         startDate={task.date}
+                        isPending={isPending(task.id)}
                       />
                     ))}
 
@@ -472,6 +508,7 @@ export default function TaskListPageContainer({
                       isOpen={editTaskId !== null}
                       onClose={() => setEditTaskId(null)}
                       taskToEdit={editingTask}
+                      isPending={editTaskId ? isPending(editTaskId) : false}
                       onSubmit={(form) => {
                         if (editTaskId) {
                           // 수정 시에는 name과 description만 전달
@@ -509,6 +546,7 @@ export default function TaskListPageContainer({
                               recurringId: openTask.recurringId,
                             })
                           }
+                          isPending={isPending(openTask.id)}
                         />
                       </div>
                     </div>

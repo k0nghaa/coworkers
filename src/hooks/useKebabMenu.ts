@@ -7,6 +7,7 @@ interface UseKebabMenuProps {
   onEdit?: () => void;
   deleteModalTitle?: string | React.ReactNode;
   deleteModalDescription?: string;
+  isPending?: boolean;
 }
 
 const KEBAB_MENU_OPTIONS = ["수정하기", "삭제하기"];
@@ -18,12 +19,14 @@ export default function useKebabMenu({
   onEdit,
   deleteModalTitle,
   deleteModalDescription = "삭제 후에는 되돌릴 수 없습니다.",
+  isPending = false,
 }: UseKebabMenuProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [content, setContent] = useState(initialContent);
 
   const handleDropdownSelect = (value: string) => {
+    if (isPending) return;
     if (value === "수정하기") {
       if (onEdit) {
         onEdit();
@@ -41,11 +44,13 @@ export default function useKebabMenu({
   };
 
   const handleSaveEdit = () => {
+    if (isPending) return;
     onSave(content);
     setIsEditing(false);
   };
 
   const handleDeleteConfirm = () => {
+    if (isPending) return;
     onDelete();
     setIsModalOpen(false);
   };

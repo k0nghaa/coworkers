@@ -19,6 +19,7 @@ export interface ListProps extends Task {
   onEditTask?: (taskId: number) => void;
   hideKebab?: boolean;
   startDate?: string;
+  isPending?: boolean;
 }
 
 export default function List(props: ListProps) {
@@ -37,6 +38,7 @@ export default function List(props: ListProps) {
     recurringId,
     onEditTask,
     hideKebab = false,
+    isPending = false,
   } = props;
 
   // useKebabMenu 훅은 여기서 각 task 별로 사용
@@ -50,6 +52,7 @@ export default function List(props: ListProps) {
         &apos;{name}&apos; <br />할 일을 정말 삭제하시겠어요?
       </>
     ),
+    isPending,
   });
 
   return (
@@ -63,9 +66,11 @@ export default function List(props: ListProps) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (isPending) return;
                 onToggle?.(id);
               }}
               aria-label={isToggle ? "완료 취소" : "완료 표시"}
+              disabled={isPending}
             >
               <SVGIcon
                 icon={isToggle ? "checkboxActive" : "checkboxDefault"}
@@ -102,7 +107,10 @@ export default function List(props: ListProps) {
                   trigger="icon"
                   icon="kebabLarge"
                   listPosition="absolute right-0 top-full mt-5"
-                  onSelect={kebab.handleDropdownSelect}
+                  onSelect={(value) => {
+                    if (isPending) return;
+                    kebab.handleDropdownSelect(value);
+                  }}
                   align="center"
                 />
               </div>
@@ -115,6 +123,8 @@ export default function List(props: ListProps) {
                   label: "삭제하기",
                   onClick: kebab.handleDeleteConfirm,
                   variant: "danger",
+                  disabled: isPending,
+                  loading: isPending,
                 }}
                 secondaryButton={{
                   label: "닫기",

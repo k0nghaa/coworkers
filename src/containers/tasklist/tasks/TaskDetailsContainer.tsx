@@ -20,6 +20,7 @@ type TaskDetailsContainerProps = {
   onToggleDone?: (taskId: number) => void;
   onTaskUpdated?: (updated: Partial<Task> & { id: number }) => void;
   onTaskDeleted?: (taskId: number) => void;
+  isPending?: boolean;
 };
 
 export default function TaskDetailsContainer({
@@ -28,6 +29,7 @@ export default function TaskDetailsContainer({
   onToggleDone,
   onTaskUpdated,
   onTaskDeleted,
+  isPending = false,
 }: TaskDetailsContainerProps) {
   // // 수정 모드 (제목 + 메모 함께)
   const [isEditing, setIsEditing] = useState(false);
@@ -53,13 +55,16 @@ export default function TaskDetailsContainer({
         <br />할 일을 정말 삭제하시겠어요?
       </>
     ),
+    isPending,
   });
 
   const handleToggle = () => {
+    if (isPending) return;
     onToggleDone?.(task.id);
   };
 
   const handleSave = () => {
+    if (isPending) return;
     // name과 description만 전달
     onTaskUpdated?.({
       id: task.id,
@@ -117,7 +122,10 @@ export default function TaskDetailsContainer({
                   trigger="icon"
                   icon="kebabLarge"
                   listPosition="absolute right-0 top-full mt-5"
-                  onSelect={kebab.handleDropdownSelect}
+                  onSelect={(value) => {
+                    if (isPending) return;
+                    kebab.handleDropdownSelect(value);
+                  }}
                   align="center"
                 />
               </div>
@@ -132,6 +140,8 @@ export default function TaskDetailsContainer({
               label: "삭제하기",
               onClick: kebab.handleDeleteConfirm,
               variant: "danger",
+              disabled: isPending,
+              loading: isPending,
             }}
             secondaryButton={{
               label: "닫기",
@@ -198,6 +208,8 @@ export default function TaskDetailsContainer({
               size="xSmall"
               label="수정하기"
               onClick={handleSave}
+              disabled={isPending}
+              loading={isPending}
             />
           </div>
         )}
@@ -212,6 +224,7 @@ export default function TaskDetailsContainer({
               variant="outlined"
               size="large"
               onClick={handleToggle}
+              disabled={isPending}
             />
           ) : (
             <ButtonFloating
@@ -226,6 +239,7 @@ export default function TaskDetailsContainer({
               variant="solid"
               size="large"
               onClick={handleToggle}
+              disabled={isPending}
             />
           )}
         </div>
