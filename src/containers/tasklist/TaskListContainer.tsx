@@ -22,6 +22,7 @@ import ListCreateButton from "@/components/Tasklist/ListCreateButton";
 import TabList from "@/components/Tasklist/Tab/TabList";
 import { toast } from "react-toastify";
 import { useHeaderStore } from "@/store/headerStore";
+import Loading from "@/app/loading";
 
 interface TaskListPageContainerProps {
   groupId: string;
@@ -406,7 +407,7 @@ export default function TaskListPageContainer({
   };
 
   if (loading) {
-    return null;
+    return <Loading />;
   }
 
   return (
