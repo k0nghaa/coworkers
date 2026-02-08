@@ -11,7 +11,11 @@ import TaskCreateModal, {
   CreateTaskForm,
 } from "@/components/Tasklist/TaskCreateModal";
 import TaskCreateButton from "../../components/Tasklist/TaskCreateButton";
-import { GetTaskListResponse, Task } from "@/lib/types/task";
+import {
+  GetTaskListResponse,
+  Task,
+  UpdateTaskRequestBody,
+} from "@/lib/types/task";
 import {
   createTasks,
   deleteTask,
@@ -80,6 +84,58 @@ export default function TaskListPageContainer({
       next.delete(taskId);
       return next;
     });
+  };
+
+  const getTaskSnapshot = (taskId: number) => {
+    if (!selectedTaskListData) return null;
+    const index = selectedTaskListData.tasks.findIndex(
+      (task) => task.id === taskId
+    );
+    if (index === -1) return null;
+    return { task: selectedTaskListData.tasks[index], index };
+  };
+
+  const rollbackTask = (taskId: number, prevTask: Task) => {
+    setSelectedTaskListData((prev) => {
+      if (!prev) return prev;
+      const exists = prev.tasks.some((task) => task.id === taskId);
+      if (!exists) return prev;
+      return {
+        ...prev,
+        tasks: prev.tasks.map((task) => (task.id === taskId ? prevTask : task)),
+      };
+    });
+  };
+
+  const applyServerTask = (taskId: number, nextTask: Task) => {
+    setSelectedTaskListData((prev) => {
+      if (!prev) return prev;
+      const exists = prev.tasks.some((task) => task.id === taskId);
+      if (!exists) return prev;
+      return {
+        ...prev,
+        tasks: prev.tasks.map((task) => (task.id === taskId ? nextTask : task)),
+      };
+    });
+  };
+
+  const toUpdatePayload = (
+    updates: Partial<Task> & { done?: boolean }
+  ): UpdateTaskRequestBody => {
+    const payload: UpdateTaskRequestBody = {};
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.description !== undefined)
+      payload.description = updates.description;
+    if (updates.done !== undefined) payload.done = updates.done;
+    return payload;
+  };
+
+  const toOptimisticUpdate = (updates: Partial<Task>): Partial<Task> => {
+    const patch: Partial<Task> = {};
+    if (updates.name !== undefined) patch.name = updates.name;
+    if (updates.description !== undefined)
+      patch.description = updates.description;
+    return patch;
   };
 
   // 사이드바 열릴 때 배경 스크롤 방지
@@ -173,28 +229,27 @@ export default function TaskListPageContainer({
     if (!selectedTaskListData) return;
     if (isPending(taskId)) return;
 
-    const targetTask = selectedTaskListData.tasks.find(
-      (task) => task.id === taskId
-    );
-    if (!targetTask) return;
+    const snapshot = getTaskSnapshot(taskId);
+    if (!snapshot) return;
 
-    const willBeDone = !targetTask.doneAt;
+    const willBeDone = !snapshot.task.doneAt;
 
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
     startPending(taskId);
 
     // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              doneAt: task.doneAt ? null : new Date().toISOString(),
-            }
-          : task
-      ),
+    setSelectedTaskListData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tasks: prev.tasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                doneAt: task.doneAt ? null : new Date().toISOString(),
+              }
+            : task
+        ),
+      };
     });
 
     try {
@@ -209,16 +264,17 @@ export default function TaskListPageContainer({
 
       if (!response.success) {
         // Rollback
-        setSelectedTaskListData(originalData);
+        rollbackTask(taskId, snapshot.task);
         toast.error("완료 상태 변경 중 오류가 발생했습니다.");
-      } else {
-        toast.success(
-          willBeDone ? "완료되었습니다." : "완료가 취소되었습니다."
-        );
+        return;
       }
+      if (response.data) {
+        applyServerTask(taskId, response.data);
+      }
+      toast.success(willBeDone ? "완료되었습니다." : "완료가 취소되었습니다.");
     } catch {
       // Rollback
-      setSelectedTaskListData(originalData);
+      rollbackTask(taskId, snapshot.task);
       toast.error("완료 상태 변경 중 오류가 발생했습니다.");
     } finally {
       endPending(taskId);
@@ -230,16 +286,25 @@ export default function TaskListPageContainer({
     if (!selectedTaskListData) return;
     if (isPending(taskId)) return;
 
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
+    const snapshot = getTaskSnapshot(taskId);
+    if (!snapshot) return;
+
+    const optimisticPatch = toOptimisticUpdate(updates);
+    if (Object.keys(optimisticPatch).length === 0) return;
+
+    const payload = toUpdatePayload(updates);
+    if (Object.keys(payload).length === 0) return;
     startPending(taskId);
 
     // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.map((task) =>
-        task.id === taskId ? { ...task, ...updates } : task
-      ),
+    setSelectedTaskListData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tasks: prev.tasks.map((task) =>
+          task.id === taskId ? { ...task, ...optimisticPatch } : task
+        ),
+      };
     });
 
     try {
@@ -247,26 +312,27 @@ export default function TaskListPageContainer({
         groupId,
         selectedTaskListId,
         String(taskId),
-        updates
+        payload
       );
 
       if (!response.success) {
         // Rollback
-        setSelectedTaskListData(originalData);
+        rollbackTask(taskId, snapshot.task);
         toast.error("할 일 수정 중 오류가 발생했습니다.");
         return;
       }
-
+      if (response.data) {
+        applyServerTask(taskId, response.data);
+      }
       toast.success("할 일이 수정되었습니다.");
+      setEditTaskId(null);
     } catch (error) {
       // Rollback
-      setSelectedTaskListData(originalData);
+      rollbackTask(taskId, snapshot.task);
       toast.error("할 일 수정 중 오류가 발생했습니다.");
     } finally {
       endPending(taskId);
     }
-
-    setEditTaskId(null);
   };
 
   // Task 삭제
@@ -512,13 +578,12 @@ export default function TaskListPageContainer({
                       onSubmit={(form) => {
                         if (editTaskId) {
                           // 수정 시에는 name과 description만 전달
-                          handleUpdateTask(editTaskId, {
+                          return handleUpdateTask(editTaskId, {
                             name: form.name,
                             description: form.description,
                           });
-                        } else {
-                          handleCreateTask(form); // POST
                         }
+                        return handleCreateTask(form); // POST
                       }}
                     />
                   </div>

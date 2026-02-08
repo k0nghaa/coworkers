@@ -45,7 +45,11 @@ export default function TaskDetailsContainer({
       onTaskUpdated?.({ id: task.id, name: newContent });
     },
 
-    onEdit: () => setIsEditing(true),
+    onEdit: () => {
+      setEditedName(task.name);
+      setEditedDescription(task.description || "");
+      setIsEditing(true);
+    },
 
     onDelete: () => onTaskDeleted?.(task.id),
 
