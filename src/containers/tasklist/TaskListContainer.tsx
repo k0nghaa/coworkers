@@ -335,22 +335,24 @@ export default function TaskListPageContainer({
     }
   };
 
-  // Task 삭제
-  const handleDeleteTask = async (task: {
+  // Task 삭제 (리스트)
+  const handleDeleteTaskFromList = async (task: {
     id: number;
     recurringId: number;
   }) => {
     if (!selectedTaskListData) return;
     if (isPending(task.id)) return;
 
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
+    const snapshotTasks = [...selectedTaskListData.tasks];
     startPending(task.id);
 
     // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.filter((t) => t.id !== task.id),
+    setSelectedTaskListData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tasks: prev.tasks.filter((t) => t.id !== task.id),
+      };
     });
 
     try {
@@ -371,25 +373,85 @@ export default function TaskListPageContainer({
       }
 
       if (!response.success) {
-        // Rollback
-        setSelectedTaskListData(originalData);
+        setSelectedTaskListData((prev) => {
+          if (!prev) return prev;
+          return { ...prev, tasks: snapshotTasks };
+        });
         toast.error("할 일 삭제 중 오류가 발생했습니다.");
         return;
       }
 
       toast.success("할 일이 삭제되었습니다.");
     } catch {
-      // Rollback
-      setSelectedTaskListData(originalData);
+      setSelectedTaskListData((prev) => {
+        if (!prev) return prev;
+        return { ...prev, tasks: snapshotTasks };
+      });
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
       return;
     } finally {
       endPending(task.id);
     }
 
-    const params = new URLSearchParams(searchParams);
-    params.delete("task");
-    router.push(`${pathname}?${params.toString()}`);
+    if (openTaskId === String(task.id)) {
+      const params = new URLSearchParams(searchParams);
+      params.delete("task");
+      router.push(`${pathname}?${params.toString()}`);
+    }
+  };
+
+  // Task 삭제 (상세)
+  const handleDeleteTaskFromDetail = async (task: {
+    id: number;
+    recurringId: number;
+  }) => {
+    if (!selectedTaskListData) return;
+    if (isPending(task.id)) return;
+
+    startPending(task.id);
+
+    try {
+      let response;
+      if (task.recurringId) {
+        response = await deleteTaskRecurring(
+          groupId,
+          selectedTaskListId,
+          String(task.id),
+          String(task.recurringId)
+        );
+      } else {
+        response = await deleteTask(
+          groupId,
+          selectedTaskListId,
+          String(task.id)
+        );
+      }
+
+      if (!response.success) {
+        toast.error("할 일 삭제 중 오류가 발생했습니다.");
+        return;
+      }
+
+      // 성공 시에만 제거 + 패널 닫기
+      setSelectedTaskListData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== task.id),
+        };
+      });
+
+      toast.success("할 일이 삭제되었습니다.");
+
+      const params = new URLSearchParams(searchParams);
+      params.delete("task");
+      router.push(`${pathname}?${params.toString()}`);
+    } catch {
+      toast.error("할 일 삭제 중 오류가 발생했습니다.");
+      return;
+    } finally {
+      endPending(task.id);
+    }
   };
 
   // Task 편집 (모달 등)
@@ -563,7 +625,9 @@ export default function TaskListPageContainer({
                         onToggle={handleTaskToggle}
                         variant="detailed"
                         onUpdateTask={handleUpdateTask}
-                        onDeleteTask={handleDeleteTask}
+                        onDeleteTask={(target) =>
+                          handleDeleteTaskFromList(target)
+                        }
                         onEditTask={handleEditTask}
                         startDate={task.date}
                         isPending={isPending(task.id)}
@@ -606,7 +670,7 @@ export default function TaskListPageContainer({
                             handleUpdateTask(id, updates);
                           }}
                           onTaskDeleted={(id) =>
-                            handleDeleteTask({
+                            handleDeleteTaskFromDetail({
                               id,
                               recurringId: openTask.recurringId,
                             })
