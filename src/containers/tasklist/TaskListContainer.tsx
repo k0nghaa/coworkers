@@ -48,7 +48,7 @@ export default function TaskListPageContainer({
   const [selectedTaskListData, setSelectedTaskListData] =
     useState<GetTaskListResponse | null>(null); // 선택된 것
   const [editTaskId, setEditTaskId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isGroupLoading, setIsGroupLoading] = useState(true);
 
   const openTaskId = searchParams.get("task");
   const openTask = selectedTaskListData?.tasks.find(
@@ -93,9 +93,11 @@ export default function TaskListPageContainer({
         }
       } catch {
         toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
+      } finally {
+        setIsGroupLoading(false);
       }
-      setLoading(false);
     }
+
     loadTaskLists();
   }, [groupId, isHydrated, isLogin, router]);
 
@@ -406,7 +408,19 @@ export default function TaskListPageContainer({
     }
   };
 
-  if (loading) {
+  if (!isHydrated) return null;
+
+  if (!isLogin) {
+    return (
+      <div className="py-40 text-center">
+        <p className="text-text-secondary text-md">
+          로그인 페이지로 이동 중...
+        </p>
+      </div>
+    );
+  }
+
+  if (isGroupLoading) {
     return <Loading />;
   }
 
