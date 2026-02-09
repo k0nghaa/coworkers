@@ -18,7 +18,9 @@ type TaskDetailsContainerProps = {
   task: Task;
   onClose?: () => void;
   onToggleDone?: (taskId: number) => void;
-  onTaskUpdated?: (updated: Partial<Task> & { id: number }) => void;
+  onTaskUpdated?: (
+    updated: Partial<Task> & { id: number }
+  ) => Promise<boolean> | boolean;
   onTaskDeleted?: (taskId: number) => void;
   isPending?: boolean;
 };
@@ -67,15 +69,15 @@ export default function TaskDetailsContainer({
     onToggleDone?.(task.id);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (isPending) return;
     // name과 description만 전달
-    onTaskUpdated?.({
+    const ok = await onTaskUpdated?.({
       id: task.id,
       name: editedName,
       description: editedDescription,
     });
-    setIsEditing(false);
+    if (ok) setIsEditing(false);
   };
 
   return (

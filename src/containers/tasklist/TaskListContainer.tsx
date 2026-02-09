@@ -282,18 +282,21 @@ export default function TaskListPageContainer({
   };
 
   // Task 업데이트
-  const handleUpdateTask = async (taskId: number, updates: Partial<Task>) => {
-    if (!selectedTaskListData) return;
-    if (isPending(taskId)) return;
+  const handleUpdateTask = async (
+    taskId: number,
+    updates: Partial<Task>
+  ): Promise<boolean> => {
+    if (!selectedTaskListData) return false;
+    if (isPending(taskId)) return false;
 
     const snapshot = getTaskSnapshot(taskId);
-    if (!snapshot) return;
+    if (!snapshot) return false;
 
     const optimisticPatch = toOptimisticUpdate(updates);
-    if (Object.keys(optimisticPatch).length === 0) return;
+    if (Object.keys(optimisticPatch).length === 0) return false;
 
     const payload = toUpdatePayload(updates);
-    if (Object.keys(payload).length === 0) return;
+    if (Object.keys(payload).length === 0) return false;
     startPending(taskId);
 
     // 낙관적 업데이트
@@ -319,17 +322,19 @@ export default function TaskListPageContainer({
         // Rollback
         rollbackTask(taskId, snapshot.task);
         toast.error("할 일 수정 중 오류가 발생했습니다.");
-        return;
+        return false;
       }
       if (response.data) {
         applyServerTask(taskId, response.data);
       }
       toast.success("할 일이 수정되었습니다.");
       setEditTaskId(null);
+      return true;
     } catch (error) {
       // Rollback
       rollbackTask(taskId, snapshot.task);
       toast.error("할 일 수정 중 오류가 발생했습니다.");
+      return false;
     } finally {
       endPending(taskId);
     }
@@ -667,7 +672,7 @@ export default function TaskListPageContainer({
                           onToggleDone={(id) => handleTaskToggle(id)}
                           onTaskUpdated={(update) => {
                             const { id, ...updates } = update;
-                            handleUpdateTask(id, updates);
+                            return handleUpdateTask(id, updates);
                           }}
                           onTaskDeleted={(id) =>
                             handleDeleteTaskFromDetail({
