@@ -3,7 +3,7 @@ import { useState } from "react";
 interface UseKebabMenuProps {
   initialContent: string;
   onSave: (content: string) => void;
-  onDelete: () => void;
+  onDelete: () => Promise<boolean> | boolean;
   onEdit?: () => void;
   deleteModalTitle?: string | React.ReactNode;
   deleteModalDescription?: string;
@@ -49,10 +49,10 @@ export default function useKebabMenu({
     setIsEditing(false);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (isPending) return;
-    onDelete();
-    setIsModalOpen(false);
+    const ok = await onDelete();
+    if (ok) setIsModalOpen(false);
   };
 
   const handleModalClose = () => {

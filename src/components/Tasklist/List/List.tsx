@@ -15,7 +15,10 @@ export interface ListProps extends Task {
   onToggle?: (id: number) => void;
   variant?: "simple" | "detailed";
   onUpdateTask?: (taskId: number, updates: Partial<Task>) => void;
-  onDeleteTask?: (task: { id: number; recurringId: number }) => void;
+  onDeleteTask?: (task: {
+    id: number;
+    recurringId: number;
+  }) => Promise<boolean> | boolean;
   onEditTask?: (taskId: number) => void;
   hideKebab?: boolean;
   startDate?: string;
@@ -45,7 +48,7 @@ export default function List(props: ListProps) {
   const kebab = useKebabMenu({
     initialContent: name,
     onSave: (newContent) => onUpdateTask?.(id, { name: newContent }),
-    onDelete: () => onDeleteTask?.({ id, recurringId }),
+    onDelete: () => (onDeleteTask ? onDeleteTask({ id, recurringId }) : false),
     onEdit: () => onEditTask?.(id),
     deleteModalTitle: (
       <>

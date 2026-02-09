@@ -344,21 +344,11 @@ export default function TaskListPageContainer({
   const handleDeleteTaskFromList = async (task: {
     id: number;
     recurringId: number;
-  }) => {
-    if (!selectedTaskListData) return;
-    if (isPending(task.id)) return;
+  }): Promise<boolean> => {
+    if (!selectedTaskListData) return false;
+    if (isPending(task.id)) return false;
 
-    const snapshotTasks = [...selectedTaskListData.tasks];
     startPending(task.id);
-
-    // 낙관적 업데이트
-    setSelectedTaskListData((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tasks: prev.tasks.filter((t) => t.id !== task.id),
-      };
-    });
 
     try {
       let response;
@@ -378,22 +368,23 @@ export default function TaskListPageContainer({
       }
 
       if (!response.success) {
-        setSelectedTaskListData((prev) => {
-          if (!prev) return prev;
-          return { ...prev, tasks: snapshotTasks };
-        });
         toast.error("할 일 삭제 중 오류가 발생했습니다.");
-        return;
+        return false;
       }
+
+      // 성공 시에만 제거
+      setSelectedTaskListData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tasks: prev.tasks.filter((t) => t.id !== task.id),
+        };
+      });
 
       toast.success("할 일이 삭제되었습니다.");
     } catch {
-      setSelectedTaskListData((prev) => {
-        if (!prev) return prev;
-        return { ...prev, tasks: snapshotTasks };
-      });
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
-      return;
+      return false;
     } finally {
       endPending(task.id);
     }
@@ -403,15 +394,17 @@ export default function TaskListPageContainer({
       params.delete("task");
       router.push(`${pathname}?${params.toString()}`);
     }
+
+    return true;
   };
 
   // Task 삭제 (상세)
   const handleDeleteTaskFromDetail = async (task: {
     id: number;
     recurringId: number;
-  }) => {
-    if (!selectedTaskListData) return;
-    if (isPending(task.id)) return;
+  }): Promise<boolean> => {
+    if (!selectedTaskListData) return false;
+    if (isPending(task.id)) return false;
 
     startPending(task.id);
 
@@ -434,7 +427,7 @@ export default function TaskListPageContainer({
 
       if (!response.success) {
         toast.error("할 일 삭제 중 오류가 발생했습니다.");
-        return;
+        return false;
       }
 
       // 성공 시에만 제거 + 패널 닫기
@@ -453,10 +446,12 @@ export default function TaskListPageContainer({
       router.push(`${pathname}?${params.toString()}`);
     } catch {
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
-      return;
+      return false;
     } finally {
       endPending(task.id);
     }
+
+    return true;
   };
 
   // Task 편집 (모달 등)

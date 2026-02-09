@@ -21,7 +21,7 @@ type TaskDetailsContainerProps = {
   onTaskUpdated?: (
     updated: Partial<Task> & { id: number }
   ) => Promise<boolean> | boolean;
-  onTaskDeleted?: (taskId: number) => void;
+  onTaskDeleted?: (taskId: number) => Promise<boolean> | boolean;
   isPending?: boolean;
 };
 
@@ -53,7 +53,7 @@ export default function TaskDetailsContainer({
       setIsEditing(true);
     },
 
-    onDelete: () => onTaskDeleted?.(task.id),
+    onDelete: () => (onTaskDeleted ? onTaskDeleted(task.id) : false),
 
     deleteModalTitle: (
       <>

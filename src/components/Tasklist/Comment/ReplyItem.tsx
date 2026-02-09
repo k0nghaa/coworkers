@@ -43,16 +43,18 @@ export default function ReplyItem({
       }
     },
     onDelete: async () => {
-      if (!taskId) return;
+      if (!taskId) return false;
 
       const res = await deleteComment(taskId, String(comment.id));
 
       if (res.success) {
         onRemove(comment.id); // 부모 상태 업데이트
         toast.success("댓글이 삭제되었습니다.");
+        return true;
       } else {
         toast.error("댓글 삭제에 실패했습니다.");
       }
+      return false;
     },
     deleteModalTitle: "해당 댓글을 정말 삭제하시겠어요?",
   });
