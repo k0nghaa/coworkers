@@ -9,6 +9,7 @@ import { CommentResponse } from "@/lib/types/comment";
 import { useSearchParams } from "next/navigation";
 import { deleteComment, updateComment } from "@/lib/api/comment";
 import { toast } from "react-toastify";
+import { useState } from "react";
 
 type CommentItemProps = {
   comment: CommentResponse;
@@ -23,6 +24,7 @@ export default function ReplyItem({
 }: CommentItemProps) {
   const searchParams = useSearchParams();
   const taskId = searchParams.get("task");
+  const [isPending, setIsPending] = useState(false);
 
   const kebab = useKebabMenu({
     initialContent: comment.content,
@@ -43,20 +45,29 @@ export default function ReplyItem({
       }
     },
     onDelete: async () => {
-      if (!taskId) return false;
+      if (!taskId || isPending) return false;
+      setIsPending(true);
 
-      const res = await deleteComment(taskId, String(comment.id));
+      try {
+        const res = await deleteComment(taskId, String(comment.id));
 
-      if (res.success) {
-        onRemove(comment.id); // 부모 상태 업데이트
-        toast.success("댓글이 삭제되었습니다.");
-        return true;
-      } else {
+        if (res.success) {
+          onRemove(comment.id); // 부모 상태 업데이트
+          toast.success("댓글이 삭제되었습니다.");
+          return true;
+        } else {
+          toast.error("댓글 삭제에 실패했습니다.");
+        }
+        return false;
+      } catch {
         toast.error("댓글 삭제에 실패했습니다.");
+        return false;
+      } finally {
+        setIsPending(false);
       }
-      return false;
     },
     deleteModalTitle: "해당 댓글을 정말 삭제하시겠어요?",
+    isPending,
   });
 
   return (
@@ -96,6 +107,8 @@ export default function ReplyItem({
                 label: "삭제하기",
                 onClick: kebab.handleDeleteConfirm,
                 variant: "danger",
+                disabled: isPending,
+                loading: isPending,
               }}
               secondaryButton={{
                 label: "닫기",
