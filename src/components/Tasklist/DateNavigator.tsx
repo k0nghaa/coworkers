@@ -1,7 +1,11 @@
 "use client";
 
 import SVGIcon from "@/components/Common/SVGIcon/SVGIcon";
-import { addDays, formatListHeaderDate } from "@/utils/date";
+import {
+  addDaysToKstParam,
+  formatListHeaderDate,
+  toKstDateParam,
+} from "@/utils/date";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import DatePicker from "react-datepicker";
@@ -13,21 +17,19 @@ export default function DateNavigator({ baseDate }: { baseDate: string }) {
 
   const [showPicker, setShowPicker] = useState(false);
 
-  const currentDate = new Date(baseDate);
+  const currentDateParam = baseDate;
 
-  const formatForQuery = (date: Date) => date.toISOString().slice(0, 10);
-
-  const updateDate = (date: Date) => {
+  const updateDate = (dateParam: string) => {
     const params = new URLSearchParams(searchParams);
-    params.set("date", formatForQuery(date));
+    params.set("date", dateParam);
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  const handlePrev = () => updateDate(addDays(currentDate, -1));
-  const handleNext = () => updateDate(addDays(currentDate, 1));
+  const handlePrev = () => updateDate(addDaysToKstParam(currentDateParam, -1));
+  const handleNext = () => updateDate(addDaysToKstParam(currentDateParam, 1));
   const handleSelect = (date: Date | null) => {
     if (!date) return;
-    updateDate(date);
+    updateDate(toKstDateParam(date));
     setShowPicker(false);
   };
 
@@ -52,7 +54,7 @@ export default function DateNavigator({ baseDate }: { baseDate: string }) {
         <div className="absolute top-full mt-8 z-50">
           <div className="bg-background-secondary rounded-xl p-16 border-interaction-hover">
             <DatePicker
-              selected={currentDate}
+              selected={new Date(`${currentDateParam}T00:00:00+09:00`)}
               onChange={handleSelect}
               inline
               formatWeekDay={(day) => day.substring(0, 3)}
