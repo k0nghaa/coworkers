@@ -9,7 +9,12 @@ import Button from "@/components/Common/Button/Button";
 import { BaseModal } from "@/components/Common/Modal";
 import ModalHeader from "@/components/Common/Modal/ModalHeader";
 import ModalFooter from "@/components/Common/Modal/ModalFooter";
-import { formatDate } from "@/utils/date";
+import {
+  formatDate,
+  getTodayKstParam,
+  kstParamToStartDateISO,
+  toKstDateParam,
+} from "@/utils/date";
 import { frequencyToEnum } from "@/constants/frequency";
 import { FrequencyType } from "@/types/schemas";
 import { useForm } from "react-hook-form";
@@ -20,11 +25,15 @@ import { toast } from "react-toastify";
 export interface CreateTaskForm {
   name: string;
   description?: string;
-  startDate: Date;
+  startDate: string;
   frequencyType: "DAILY" | "WEEKLY" | "MONTHLY" | "ONCE";
   weekDays?: number[];
   monthDay?: number;
 }
+
+type TaskCreateFormValues = Omit<CreateTaskForm, "startDate"> & {
+  startDateParam: string;
+};
 
 interface TaskCreateModalProps {
   isOpen: boolean;
@@ -43,7 +52,7 @@ export default function TaskCreateModal({
   taskToEdit,
   isPending = false,
 }: TaskCreateModalProps) {
-  const today = new Date();
+  const todayParam = getTodayKstParam();
   const isEditMode = !!taskToEdit;
 
   const {
@@ -53,11 +62,11 @@ export default function TaskCreateModal({
     reset,
     register,
     formState: { errors, isValid },
-  } = useForm<CreateTaskForm>({
+  } = useForm<TaskCreateFormValues>({
     defaultValues: {
       name: "",
       description: "",
-      startDate: today,
+      startDateParam: todayParam,
       frequencyType: "ONCE",
     },
     mode: "onChange",
@@ -68,7 +77,7 @@ export default function TaskCreateModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
 
-  // 모달이 닫힐 때 DatePicker 상태 초기화
+  // 모달이 닫힐 때 DatePicker 상태 초기화 // CHECK: 그냥 DatePicker 닫히는거 아닌가? 초기화 되는 로직이 없는 것 같은데?
   useEffect(() => {
     if (!isOpen) setShowDatePicker(false);
   }, [isOpen]);
@@ -79,7 +88,7 @@ export default function TaskCreateModal({
       reset({
         name: "",
         description: "",
-        startDate: new Date(),
+        startDateParam: getTodayKstParam(),
         frequencyType: "ONCE",
       });
       setWeekDays([]);
@@ -90,19 +99,24 @@ export default function TaskCreateModal({
   // 수정 모드일 때 데이터 채우기
   useEffect(() => {
     if (taskToEdit) {
+      const rawStartDate = taskToEdit.startDate ?? taskToEdit.date;
+      const startDateParam = rawStartDate
+        ? toKstDateParam(new Date(rawStartDate))
+        : getTodayKstParam();
+
       reset({
         name: taskToEdit.name,
         description: taskToEdit.description,
-        startDate: new Date(taskToEdit.date),
+        startDateParam,
       });
       setWeekDays(taskToEdit.weekDays ?? []);
-      setMonthDay(taskToEdit.monthDay ?? new Date(taskToEdit.date).getDate());
+      setMonthDay(taskToEdit.monthDay ?? undefined);
     }
   }, [taskToEdit, reset]);
 
-  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch is required for real-time form value tracking
-  const watchStartDate = watch("startDate");
+  const watchStartDateParam = watch("startDateParam");
   const watchFrequency = watch("frequencyType");
+  const resolvedStartDateParam = watchStartDateParam || todayParam;
 
   // 외부 클릭 감지
   useEffect(() => {
@@ -124,7 +138,7 @@ export default function TaskCreateModal({
     };
   }, [showDatePicker]);
 
-  const submitHandler = async (form: CreateTaskForm) => {
+  const submitHandler = async (form: TaskCreateFormValues) => {
     try {
       if (isPending) return;
 
@@ -142,16 +156,11 @@ export default function TaskCreateModal({
         return;
       }
 
-      // 시간을 9시로 고정
-      const year = form.startDate.getFullYear();
-      const month = form.startDate.getMonth();
-      const date = form.startDate.getDate();
-
-      const localDateTime = new Date(year, month, date, 9, 0, 0, 0);
-
       await onSubmit({
-        ...form,
-        startDate: localDateTime,
+        name: form.name,
+        description: form.description,
+        startDate: kstParamToStartDateISO(form.startDateParam),
+        frequencyType: form.frequencyType,
         weekDays,
         monthDay,
       });
@@ -211,9 +220,11 @@ export default function TaskCreateModal({
                     full
                     label="시작 날짜"
                     labelClassName="sr-only"
-                    placeholder={formatDate(today.toISOString())}
+                    placeholder={formatDate(kstParamToStartDateISO(todayParam))}
                     readOnly
-                    value={formatDate(watchStartDate.toISOString())}
+                    value={formatDate(
+                      kstParamToStartDateISO(resolvedStartDateParam)
+                    )}
                     onClick={() => {
                       setShowDatePicker(!showDatePicker);
                     }}
@@ -224,15 +235,19 @@ export default function TaskCreateModal({
                     <div className="absolute sm:w-full top-full mt-8 z-50 border border-interaction-hover bg-background-secondary rounded-xl">
                       <div className="p-8 shadow-xl">
                         <DatePicker
-                          selected={watchStartDate}
+                          selected={
+                            new Date(`${resolvedStartDateParam}T00:00:00+09:00`)
+                          }
                           onChange={(date: Date | null) => {
                             if (!date) return;
-                            setValue("startDate", date);
+                            setValue("startDateParam", toKstDateParam(date), {
+                              shouldValidate: true,
+                            });
                             setShowDatePicker(false);
                           }}
                           inline
                           formatWeekDay={(day) => day.substring(0, 3)}
-                          minDate={new Date()}
+                          minDate={new Date(`${todayParam}T00:00:00+09:00`)}
                         />
                       </div>
                     </div>
@@ -259,7 +274,7 @@ export default function TaskCreateModal({
                 if (enumValue === "WEEKLY") {
                   setWeekDays([]);
                 } else if (enumValue === "MONTHLY") {
-                  setMonthDay(watchStartDate.getDate());
+                  setMonthDay(Number(resolvedStartDateParam.split("-")[2]));
                 } else {
                   setWeekDays([]);
                   setMonthDay(undefined);
