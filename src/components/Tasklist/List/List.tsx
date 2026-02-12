@@ -21,7 +21,6 @@ export interface ListProps extends Task {
   }) => Promise<boolean> | boolean;
   onEditTask?: (taskId: number) => void;
   hideKebab?: boolean;
-  startDate?: string;
   isPending?: boolean;
 }
 

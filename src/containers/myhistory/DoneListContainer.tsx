@@ -51,6 +51,7 @@ export default function DoneListContainer({
         description: task.description,
         doneAt: task.doneAt,
         date: task.date,
+        startDate: task.date,
         frequency: task.frequency as FrequencyType,
         displayIndex: task.displayIndex,
         recurringId: task.recurringId,
@@ -106,6 +107,7 @@ export default function DoneListContainer({
               key={task.id}
               id={task.id}
               name={task.name}
+              startDate={task.startDate}
               isToggle={true}
               variant="simple"
               hideKebab={true}
