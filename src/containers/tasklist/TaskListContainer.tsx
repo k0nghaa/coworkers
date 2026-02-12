@@ -161,15 +161,20 @@ export default function TaskListPageContainer({
   // 리스트 페이지 헤더 날짜(date가 있으면 해당날짜, 없으면 "오늘")
   const baseDate = selectedDate ?? getTodayKstParam();
 
-  // 1. 초기 로드: 모든 TaskList 가져오기
+  // 0. 로그인 가드 전용
   useEffect(() => {
     // hydration 전에는 체크하지 않음
     if (!isHydrated) return;
     // 비로그인이면 로그인 페이지로 이동합니다.
     if (!isLogin) {
-      router.push("/login");
-      return;
+      router.replace("/login");
     }
+  }, [isHydrated, isLogin, router]);
+
+  // 1. 초기 로드: 모든 TaskList 가져오기
+  useEffect(() => {
+    if (!isHydrated || !isLogin) return;
+
     async function loadTaskLists() {
       try {
         const response = await getGroup(groupId); // 이 API 필요!
@@ -190,13 +195,8 @@ export default function TaskListPageContainer({
 
   // 2. 선택된 TaskList 변경시 상세 데이터 가져오기
   useEffect(() => {
-    // hydration 전에는 체크하지 않음
-    if (!isHydrated) return;
-    // 비로그인이면 로그인 페이지로 이동합니다.
-    if (!isLogin) {
-      router.push("/login");
-      return;
-    }
+    if (!isHydrated || !isLogin) return;
+
     if (!selectedTaskListId) return;
 
     async function loadSelectedTaskList() {
