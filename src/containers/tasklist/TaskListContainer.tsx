@@ -401,7 +401,7 @@ export default function TaskListPageContainer({
     if (openTaskId === String(task.id)) {
       const params = new URLSearchParams(searchParams);
       params.delete("task");
-      router.push(`${pathname}?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`);
     }
 
     return true;
@@ -452,7 +452,7 @@ export default function TaskListPageContainer({
 
       const params = new URLSearchParams(searchParams);
       params.delete("task");
-      router.push(`${pathname}?${params.toString()}`);
+      router.replace(`${pathname}?${params.toString()}`);
     } catch {
       toast.error("할 일 삭제 중 오류가 발생했습니다.");
       return false;
