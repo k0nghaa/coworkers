@@ -4,12 +4,16 @@ export interface User {
   image: string | null;
 }
 
-// 실제 응답 구조에 맞춤
+// 정규화 결과
 export interface Task {
   id: number;
   name: string;
   description?: string;
-  date: string; // ISO 8601 형식
+
+  // 정규화된 내부 모델
+  startDate: string; // SSOT
+  date: string; // 호환용: 항상 startDate와 동일
+
   doneAt?: string | null;
   updatedAt?: string;
   user?: User | null;

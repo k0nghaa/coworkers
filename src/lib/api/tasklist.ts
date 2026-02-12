@@ -29,9 +29,10 @@ export type GetTasksParams = {
   date?: string;
 };
 
-// 함수 안에서만 쓰는 임시 타입
-type TaskMaybeStart = GetTaskListResponse["tasks"][number] & {
+// Task 기반으로 만들되 서버가 date만 줄 수 있으니 둘다 optional
+type TaskFromApi = Omit<Task, "startDate" | "date"> & {
   startDate?: string;
+  date?: string;
 };
 
 /**
@@ -60,15 +61,20 @@ export async function getTaskList(
 
     const data = (await response.json()) as GetTaskListResponse;
 
-    // recurring 응답 대비하여 date 보정
+    const tasks = (data.tasks as TaskFromApi[]).reduce<Task[]>((acc, t) => {
+      const startDate = t.startDate ?? t.date;
+      if (!startDate) return acc; // 이상 응답은 버림 (toast/log는 선택)
+      acc.push({
+        ...t,
+        startDate,
+        date: startDate, // 호환용
+      });
+      return acc;
+    }, []);
+
     const mapped: GetTaskListResponse = {
       ...data,
-      tasks: (data.tasks as TaskMaybeStart[])
-        .map((t) => {
-          const date = t.date ?? t.startDate;
-          return date ? { ...t, date } : null;
-        })
-        .filter((t): t is GetTaskListResponse["tasks"][number] => t !== null),
+      tasks,
     };
 
     return { success: true, data: mapped };

@@ -27,6 +27,7 @@ import TabList from "@/components/Tasklist/Tab/TabList";
 import { toast } from "react-toastify";
 import { useHeaderStore } from "@/store/headerStore";
 import Loading from "@/app/loading";
+import { getTodayKstParam, toKstDateParam } from "@/utils/date";
 
 interface TaskListPageContainerProps {
   groupId: string;
@@ -114,7 +115,14 @@ export default function TaskListPageContainer({
       if (!exists) return prev;
       return {
         ...prev,
-        tasks: prev.tasks.map((task) => (task.id === taskId ? nextTask : task)),
+        tasks: prev.tasks.map((task) => {
+          if (task.id !== taskId) return task;
+          const startDate =
+            nextTask.startDate ?? nextTask.date ?? task.startDate ?? task.date;
+          return startDate
+            ? { ...nextTask, startDate, date: startDate }
+            : nextTask;
+        }),
       };
     });
   };
@@ -151,7 +159,7 @@ export default function TaskListPageContainer({
     };
   }, [openTask]);
   // 리스트 페이지 헤더 날짜(date가 있으면 해당날짜, 없으면 "오늘")
-  const baseDate = selectedDate ?? new Date().toISOString();
+  const baseDate = selectedDate ?? getTodayKstParam();
 
   // 1. 초기 로드: 모든 TaskList 가져오기
   useEffect(() => {
@@ -193,13 +201,14 @@ export default function TaskListPageContainer({
 
     async function loadSelectedTaskList() {
       try {
-        const date = selectedDate || new Date().toISOString().split("T")[0];
+        const date = selectedDate || getTodayKstParam();
         const response = await getTaskList(groupId, selectedTaskListId, {
           date,
         });
 
         if (response.success) {
           setSelectedTaskListData(response.data);
+          console.log("getTaskList", response.data);
         } else {
           toast.error("할 일 불러오는 중 오류가 발생했습니다.");
         }
@@ -463,15 +472,11 @@ export default function TaskListPageContainer({
   const handleCreateTask = async (form: CreateTaskForm) => {
     if (!selectedTaskListData) return;
 
-    // form.startDate는 이미 병합된 로컬 시간
-    const localDateTime = form.startDate;
-
     const createPayload = (() => {
       const basePayload = {
         name: form.name,
         description: form.description,
-        // 로컬 시간을 UTC로 자동 변환하여 전송
-        startDate: localDateTime.toISOString(),
+        startDate: form.startDate,
       };
 
       switch (form.frequencyType) {
@@ -499,28 +504,24 @@ export default function TaskListPageContainer({
           };
       }
     })();
-
+    console.log("createPayload", createPayload);
     const response = await createTasks(
       groupId,
       selectedTaskListId,
       createPayload
     );
 
+    console.log("response", response);
+
     if (!response.success) {
       toast.error("할 일 생성에 실패했습니다.");
       return;
     }
-
+    console.log("success response", response);
     toast.success("할 일이 생성되었습니다.");
 
-    // UTC 기준 날짜로 계산 (서버에 저장되는 날짜와 일치)
-    const utcDate = new Date(localDateTime.toISOString());
-    const year = utcDate.getUTCFullYear();
-    const month = utcDate.getUTCMonth();
-    const date = utcDate.getUTCDate();
-
-    const targetDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
-    const currentDate = selectedDate || new Date().toISOString().split("T")[0];
+    const targetDate = toKstDateParam(new Date(form.startDate));
+    const currentDate = selectedDate || getTodayKstParam();
 
     const params = new URLSearchParams(searchParams);
 
@@ -629,7 +630,7 @@ export default function TaskListPageContainer({
                           handleDeleteTaskFromList(target)
                         }
                         onEditTask={handleEditTask}
-                        startDate={task.date}
+                        startDate={task.startDate}
                         isPending={isPending(task.id)}
                       />
                     ))}

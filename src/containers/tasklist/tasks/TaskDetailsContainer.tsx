@@ -9,7 +9,7 @@ import SVGIcon from "@/components/Common/SVGIcon/SVGIcon";
 import Reply from "@/components/Tasklist/Comment/Reply";
 import useKebabMenu from "@/hooks/useKebabMenu";
 import { Task } from "@/lib/types/task";
-import { formatDate, formatTime } from "@/utils/date";
+import { formatDate } from "@/utils/date";
 import { getFrequencyText } from "@/utils/frequency";
 import clsx from "clsx";
 import { useState } from "react";
@@ -173,12 +173,7 @@ export default function TaskDetailsContainer({
           <div className="flex items-center gap-10 text-text-default text-xs font-regular">
             <div className="flex items-center gap-6">
               <SVGIcon icon="calendar" size="xxs" />
-              <span>{task.date ? formatDate(task.date) : "-"}</span>
-            </div>
-            <div className="w-px h-8 bg-background-tertiary" />
-            <div className="flex items-center gap-6">
-              <SVGIcon icon="iconTime" size="xxs" />
-              <span>{task.date ? formatTime(task.date) : "-"}</span>
+              <span>{task.startDate ? formatDate(task.startDate) : "-"}</span>
             </div>
             <div className="w-px h-8 bg-background-tertiary " />
             <div className="flex items-center gap-6">

@@ -114,6 +114,7 @@ export default function TaskCreateModal({
     }
   }, [taskToEdit, reset]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch is required for real-time form value tracking
   const watchStartDateParam = watch("startDateParam");
   const watchFrequency = watch("frequencyType");
   const resolvedStartDateParam = watchStartDateParam || todayParam;
