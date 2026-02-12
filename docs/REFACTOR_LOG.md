@@ -60,3 +60,31 @@
   - 동일 task 연타 시에도 UI가 “마지막 의도” 기준으로 안정적으로 유지
   - 실패 상황에서도 화면이 닫히거나 삭제된 것처럼 보이는 혼란 제거
   - URL, 모달, 상세 패널 상태가 성공/실패 결과와 일관되게 유지되어 신뢰 가능한 UX 제공
+
+### /tasklist: 날짜 SSOT(startDate) 정규화 및 KST 날짜-only 정책 통일
+
+- **문제**
+  - UTC ↔ KST 변환 과정에서 날짜가 하루 밀리는 이슈가 발생할 수 있었음
+  - 생성 시 “9시 고정” 같은 임시 로직이 존재해 정책이 불명확했음
+  - Date 객체와 문자열(date param)이 혼용되어 URL·UI·API 간 기준이 달랐음
+  - 서버 응답이 date 또는 startDate로 혼재되어 타입 안정성이 낮았음
+- **판단**
+  - tasklist 화면은 “시간이 아닌 날짜 중심” 도메인이므로 날짜-only 정책으로 단순화
+  - 클라이언트 SSOT를 startDate로 통일하고 API 응답은 프론트에서 정규화
+  - Date 객체 기반 계산 대신 KST YYYY-MM-DD param 기반 흐름으로 변경
+  - 생성 payload는 로컬 날짜 → 00:00Z ISO로 정규화하여 서버와 일관성 유지
+- **개선**
+  - 날짜 유틸 추가: `toKstDateParam`, `getTodayKstParam`, `kstParamToStartDateISO`
+  - DateNavigator를 Date 객체 대신 KST param 기반 로직으로 전환
+  - **TaskCreateModal**
+    - startDate 상태를 Date → string param으로 변경
+    - “9시 고정” 로직 제거 후 제출 시 00:00Z 정규화
+  - **getTaskList**: `startDate ?? date` 기반으로 Task 정규화 후 SSOT 통일
+  - **TaskListContainer**: 날짜 계산을 KST param 기준으로 변경
+  - **TaskDetailsContainer**: 시간 UI 제거 (날짜-only 정책 반영)
+- **결과**
+  - UTC/KST 혼용으로 인한 날짜 밀림 가능성 제거
+  - 생성/조회/URL/렌더링이 동일한 날짜 기준으로 동작
+  - 날짜 관련 코드가 Date 객체 의존에서 문자열 param 기반으로 단순화
+  - 서버 응답 구조가 달라도 프론트 내부 모델(Task)이 안정적으로 유지됨
+  - 불필요한 시간 처리 로직 제거로 유지보수성과 가독성 개선

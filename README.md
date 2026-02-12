@@ -13,6 +13,7 @@
 > - (/tasklist) 삭제 실패 시 URL 유지 / 모달 클릭 이벤트 전파 차단
 > - (/tasklist) 초기 빈 화면 해소 및 로그인 리다이렉트 UX 보강
 > - (/tasklist) optimistic update 레이스 차단 및 부분 롤백 적용
+> - (/tasklist) 날짜 SSOT(startDate) 정규화 및 KST 날짜-only 정책 통일
 
 ## 📖 프로젝트 소개
 
