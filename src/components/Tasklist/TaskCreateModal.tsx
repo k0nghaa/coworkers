@@ -77,7 +77,7 @@ export default function TaskCreateModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
 
-  // 모달이 닫힐 때 DatePicker 상태 초기화 // CHECK: 그냥 DatePicker 닫히는거 아닌가? 초기화 되는 로직이 없는 것 같은데?
+  // 모달이 닫힐 때 DatePicker 상태 초기화
   useEffect(() => {
     if (!isOpen) setShowDatePicker(false);
   }, [isOpen]);
