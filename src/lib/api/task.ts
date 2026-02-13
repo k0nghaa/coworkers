@@ -9,6 +9,7 @@ import {
   GetTasksParams,
   GetTasksResponse,
   Task,
+  TaskPatch,
   UpdateTaskRequestBody,
 } from "../types/task";
 import { revalidatePath } from "next/cache";
@@ -126,7 +127,7 @@ export async function updateTask(
   taskListId: string,
   taskId: string,
   data: UpdateTaskRequestBody
-): Promise<ApiResult<Task>> {
+): Promise<ApiResult<TaskPatch>> {
   try {
     const response = await fetchApi(
       `${BASE_URL}/groups/${groupId}/task-lists/${taskListId}/tasks/${taskId}`,
@@ -146,7 +147,7 @@ export async function updateTask(
       };
     }
 
-    const result = (await response.json()) as Task;
+    const result = (await response.json()) as TaskPatch;
 
     // 할 일 완료/취소 시 캐시 무효화
     if (data.done !== undefined) {

@@ -112,3 +112,6 @@ export interface TaskForEdit extends Task {
   weekDays?: number[]; // recurring에서 가져온 정보
   monthDay?: number; // recurring에서 가져온 정보
 }
+
+// 서버가 업데이트 결과로 부분 필드만 주더라도 받기(user, writer / userId, writerId 문제 해결)
+export type TaskPatch = Pick<Task, "id"> & Partial<Task>;

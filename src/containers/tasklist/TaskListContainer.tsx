@@ -14,6 +14,7 @@ import TaskCreateButton from "../../components/Tasklist/TaskCreateButton";
 import {
   GetTaskListResponse,
   Task,
+  TaskPatch,
   UpdateTaskRequestBody,
 } from "@/lib/types/task";
 import {
@@ -108,20 +109,40 @@ export default function TaskListPageContainer({
     });
   };
 
-  const applyServerTask = (taskId: number, nextTask: Task) => {
+  const applyServerTask = (taskId: number, patch: TaskPatch) => {
     setSelectedTaskListData((prev) => {
       if (!prev) return prev;
-      const exists = prev.tasks.some((task) => task.id === taskId);
-      if (!exists) return prev;
+
       return {
         ...prev,
         tasks: prev.tasks.map((task) => {
           if (task.id !== taskId) return task;
+
+          // 1) 날짜 SSOT 보정
           const startDate =
-            nextTask.startDate ?? nextTask.date ?? task.startDate ?? task.date;
-          return startDate
-            ? { ...nextTask, startDate, date: startDate }
-            : nextTask;
+            patch.startDate ?? patch.date ?? task.startDate ?? task.date;
+
+          // 2) “서버 응답은 patch”로 보고 merge
+          const merged: Task = {
+            ...task,
+            ...patch,
+
+            // 서버가 writer/user 객체를 안 주거나 null을 줄 수 있으니 보존
+            writer: patch.writer ?? task.writer,
+            user: patch.user ?? task.user,
+            doneBy: patch.doneBy ?? task.doneBy,
+
+            // commentCount 같은 것도 패치에 없으면 유지
+            commentCount:
+              patch.commentCount !== undefined
+                ? patch.commentCount
+                : task.commentCount,
+
+            // startDate/date는 통일(호환용 date)
+            ...(startDate ? { startDate, date: startDate } : {}),
+          };
+
+          return merged;
         }),
       };
     });
@@ -270,6 +291,7 @@ export default function TaskListPageContainer({
           done: willBeDone,
         }
       );
+      console.log(response);
 
       if (!response.success) {
         // Rollback
@@ -279,6 +301,7 @@ export default function TaskListPageContainer({
       }
       if (response.data) {
         applyServerTask(taskId, response.data);
+        console.log(response.data);
       }
       toast.success(willBeDone ? "완료되었습니다." : "완료가 취소되었습니다.");
     } catch {
@@ -326,6 +349,7 @@ export default function TaskListPageContainer({
         String(taskId),
         payload
       );
+      console.log(response);
 
       if (!response.success) {
         // Rollback
@@ -336,6 +360,7 @@ export default function TaskListPageContainer({
       if (response.data) {
         applyServerTask(taskId, response.data);
       }
+      console.log(response.data);
       toast.success("할 일이 수정되었습니다.");
       setEditTaskId(null);
       return true;
