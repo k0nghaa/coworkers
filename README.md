@@ -7,6 +7,8 @@
 >
 > #### 🧩 개인 리팩토링 로그
 >
+> /tasklist 페이지의 상태 관리 안정화와 UX 흐름 개선을 중심으로 리팩토링을 진행했습니다.
+>
 > _상세 로그: [docs/REFACTOR_LOG.md](./docs/REFACTOR_LOG.md) 참고_
 >
 > - (설정) next/image 외부 이미지 정책 조정 및 폴백 처리
