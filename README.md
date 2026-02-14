@@ -5,6 +5,31 @@
 > 프로젝트 종료 이후, 개인 학습 및 포트폴리오 정리를 목적으로 코드 리팩토링을 진행했습니다.
 > 현재 default 브랜치는 개인 리팩토링 결과를 반영한 `refactor` 브랜치입니다.
 >
+> #### 📌 리팩토링 개요
+>
+> 담당 영역: /tasklist 페이지 상태 관리 안정화 및 UX 흐름 개선
+>
+> **Why Refactor?**
+>
+> - 날짜 처리 기준 혼재 → startDate SSOT 기준으로 통일
+> - optimistic update 충돌로 인한 UX 불안정
+> - 초기 진입 및 로그인 리다이렉트 흐름 개선 필요
+> - 서버 응답 스키마 불일치(startDate/date, nullable·래핑 필드 등)
+>
+> **Before → After (핵심 변화)**
+>
+> - 초기 진입 시 빈 화면 발생 → 안정적인 redirect UX 적용
+> - optimistic update 레이스 발생 → 부분 롤백 구조 도입
+> - KST/Local 날짜 혼재 → 날짜-only 정책 통일
+> - 서버 응답 필드 구조 불일치 → 프론트 내부 모델 기준으로 정규화하여 안정적 렌더링 유지
+>
+> **설계 관점 (Design Keywords)**
+>
+> - SSOT(startDate) 기반 상태 관리
+> - 부분 롤백(Partial Rollback)으로 실패 범위를 최소화해 UX 안정화
+> - 이벤트 버블링 차단으로 의도치 않은 선택/URL 변경 방지
+> - 서버 응답 정규화(Response Normalization)로 프론트 모델 안정화
+>
 > #### 🧩 개인 리팩토링 로그
 >
 > /tasklist 페이지의 상태 관리 안정화와 UX 흐름 개선을 중심으로 리팩토링을 진행했습니다.
