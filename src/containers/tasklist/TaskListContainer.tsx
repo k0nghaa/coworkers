@@ -79,7 +79,7 @@ export default function TaskListPageContainer({
     if (!isHydrated) return;
     // 비로그인이면 로그인 페이지로 이동합니다.
     if (!isLogin) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     async function loadTaskLists() {
@@ -104,7 +104,7 @@ export default function TaskListPageContainer({
     if (!isHydrated) return;
     // 비로그인이면 로그인 페이지로 이동합니다.
     if (!isLogin) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
     if (!selectedTaskListId) return;
@@ -284,7 +284,7 @@ export default function TaskListPageContainer({
 
     const params = new URLSearchParams(searchParams);
     params.delete("task");
-    router.push(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   // Task 편집 (모달 등)

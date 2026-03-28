@@ -20,7 +20,7 @@ export default function DateNavigator({ baseDate }: { baseDate: string }) {
   const updateDate = (date: Date) => {
     const params = new URLSearchParams(searchParams);
     params.set("date", formatForQuery(date));
-    router.replace(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const handlePrev = () => updateDate(addDays(currentDate, -1));

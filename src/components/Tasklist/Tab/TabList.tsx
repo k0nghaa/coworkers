@@ -27,7 +27,7 @@ export default function TabList({ tabs }: TabsProps) {
       params.set("date", searchParams.get("date")!);
     }
 
-    router.replace(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   if (tabs.length === 0) {
