@@ -65,7 +65,10 @@ const BaseModal = ({
         {/* X 닫기 버튼 */}
         {showCloseButton && (
           <button
-            onClick={onClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="absolute right-16 top-16 text-text-default cursor-pointer"
             aria-label="닫기"
             data-modal-close

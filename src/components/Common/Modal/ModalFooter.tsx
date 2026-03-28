@@ -24,7 +24,10 @@ const ModalFooter = ({ primaryButton, secondaryButton }: ModalFooterProps) => {
           width="136px"
           full
           disabled={secondaryButton.disabled}
-          onClick={secondaryButton.onClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            secondaryButton.onClick();
+          }}
         />
       )}
 
