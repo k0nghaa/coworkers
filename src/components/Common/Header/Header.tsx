@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useHeaderStore } from "@/store/headerStore";
-import { logoutAction } from "@/lib/api/auth";
+import { logoutAction, postSignin } from "@/lib/api/auth";
 import clsx from "clsx";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -11,6 +11,9 @@ import SVGIcon from "../SVGIcon/SVGIcon";
 import SideHeaderMobile from "./SideHeader/SideHeaderMobile";
 import SideHeaderDesktop from "./SideHeader/SideHeaderDesktop";
 import { showErrorToast, showSuccessToast } from "@/utils/error";
+import Button from "../Button/Button";
+import { SignInRequestBody } from "@/lib/types/auth";
+import { useApiMutation } from "@/hooks/useApiMutation";
 
 // 유저 프로필을 누르면 나오는 드롭다운 리스트입니다.
 const ACCOUNTLIST = [
@@ -114,6 +117,26 @@ function Header() {
     } catch (error) {
       showErrorToast("로그아웃에 실패했습니다.");
     }
+  };
+
+  /** 게스트용 로그인 기능 */
+  const { mutate: mutateLogin } = useApiMutation();
+  const handleGuestLogin = async () => {
+    const requestData: SignInRequestBody = {
+      email: "guest@email.com",
+      password: "guest123$",
+    };
+
+    await mutateLogin(async () => {
+      const response = await postSignin(requestData);
+      if (!response.success) {
+        return;
+      }
+      await fetchUser();
+      showSuccessToast("로그인에 성공했습니다.");
+      router.replace("/3952"); // 프론트엔드팀 페이지로 이동
+      return response;
+    });
   };
 
   // 우측 프로필을 누르면 작동하는 함수입니다.
@@ -250,11 +273,20 @@ function Header() {
             </div>
           </div>
         ) : (
-          <div
-            className={clsx("flex items-center cursor-pointer")}
-            onClick={() => router.push("/login")}
-          >
-            로그인
+          <div className="flex items-center gap-16">
+            <div
+              className={clsx("flex items-center cursor-pointer")}
+              onClick={() => router.push("/login")}
+            >
+              로그인
+            </div>
+            <Button
+              label="게스트로 체험하기"
+              width="200"
+              variant="gradient"
+              type="submit"
+              onClick={handleGuestLogin}
+            ></Button>
           </div>
         )}
       </div>
