@@ -32,7 +32,7 @@ export default function DateNavigator({ baseDate }: { baseDate: string }) {
   };
 
   return (
-    <div className="flex gap-12 items-center relative">
+    <nav className="flex gap-12 items-center relative">
       <div className="text-lg font-medium whitespace-nowrap">
         {formatListHeaderDate(baseDate)}
       </div>
@@ -61,6 +61,6 @@ export default function DateNavigator({ baseDate }: { baseDate: string }) {
           </div>
         </div>
       )}
-    </div>
+    </nav>
   );
 }

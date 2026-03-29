@@ -410,17 +410,17 @@ export default function TaskListPageContainer({
 
   return (
     <div className="relative max-w-1200 mx-auto my-0 sm:px-24 px-16 mb-80">
-      <div className="flex flex-col gap-24">
-        <div className="text-xl font-bold mt-40">할 일</div>
+      <div id="wrapper" className="flex flex-col gap-24">
+        <header className="text-xl font-bold mt-40">할 일</header>
 
         <div className="flex justify-between">
           <DateNavigator baseDate={baseDate} />
           <ListCreateButton onCreate={handleCreateList} />
         </div>
         <div className="h-20">
-          <div className="overflow-x-auto custom-scrollbar">
+          <nav className="overflow-x-auto custom-scrollbar">
             <TabList tabs={taskLists} />
-          </div>
+          </nav>
         </div>
         <main className="flex-1">
           {selectedTaskListData && (
