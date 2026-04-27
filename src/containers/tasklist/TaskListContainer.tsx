@@ -22,17 +22,14 @@ import ListCreateButton from "@/components/Tasklist/ListCreateButton";
 import TabList from "@/components/Tasklist/Tab/TabList";
 import { toast } from "react-toastify";
 import { useHeaderStore } from "@/store/headerStore";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface TaskListPageContainerProps {
   groupId: string;
-  selectedTaskListId: string;
-  selectedDate?: string;
 }
 
 export default function TaskListPageContainer({
   groupId,
-  selectedTaskListId,
-  selectedDate,
 }: TaskListPageContainerProps) {
   const isLogin = useHeaderStore((set) => set.isLogin);
   const isHydrated = useHeaderStore((set) => set.isHydrated);
@@ -41,13 +38,24 @@ export default function TaskListPageContainer({
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const [taskLists, setTaskLists] = useState<GroupDetailResponse["taskLists"]>(
-    []
-  );
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["group", groupId],
+    queryFn: async () => {
+      const response = await getGroup(groupId);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
+  });
+
+  const taskLists = data?.taskLists ?? [];
+
+  const selectedTaskListId =
+    searchParams.get("tab") || taskLists[0]?.id.toString() || "";
+  const selectedDate = searchParams.get("date");
+
   const [selectedTaskListData, setSelectedTaskListData] =
     useState<GetTaskListResponse | null>(null); // 선택된 것
   const [editTaskId, setEditTaskId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const openTaskId = searchParams.get("task");
   const openTask = selectedTaskListData?.tasks.find(
@@ -82,33 +90,10 @@ export default function TaskListPageContainer({
       router.replace("/login");
       return;
     }
-    async function loadTaskLists() {
-      try {
-        const response = await getGroup(groupId); // 이 API 필요!
-        if (response.success) {
-          setTaskLists(response.data.taskLists);
-        } else {
-          toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
-        }
-      } catch {
-        toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
-      }
-      setLoading(false);
-    }
-    loadTaskLists();
-  }, [groupId, isHydrated, isLogin, router]);
+  });
 
   // 2. 선택된 TaskList 변경시 상세 데이터 가져오기
   useEffect(() => {
-    // hydration 전에는 체크하지 않음
-    if (!isHydrated) return;
-    // 비로그인이면 로그인 페이지로 이동합니다.
-    if (!isLogin) {
-      router.replace("/login");
-      return;
-    }
-    if (!selectedTaskListId) return;
-
     async function loadSelectedTaskList() {
       try {
         const date = selectedDate || new Date().toISOString().split("T")[0];
@@ -395,8 +380,8 @@ export default function TaskListPageContainer({
         return;
       }
 
-      // API 응답으로 받은 실제 데이터로 업데이트 (tasks 배열 추가)
-      setTaskLists((prev) => [...prev, { ...response.data, tasks: [] }]);
+      // // API 응답으로 받은 실제 데이터로 업데이트 (tasks 배열 추가)
+      // setTaskLists((prev) => [...prev, { ...response.data, tasks: [] }]);
 
       toast.success("할 일 목록이 생성되었습니다.");
     } catch {
@@ -404,9 +389,8 @@ export default function TaskListPageContainer({
     }
   };
 
-  if (loading) {
-    return null;
-  }
+  if (isLoading) return <div>로딩 중 ...</div>;
+  if (isError) return toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
 
   return (
     <div className="relative max-w-1200 mx-auto my-0 sm:px-24 px-16 mb-80">

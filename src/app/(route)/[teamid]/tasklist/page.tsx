@@ -1,5 +1,10 @@
 import TaskListPageContainer from "@/containers/tasklist/TaskListContainer";
 import { getGroup } from "@/lib/api/group";
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { Metadata } from "next";
 
 type TaskListPageProps = {
@@ -27,19 +32,21 @@ export async function generateMetadata({
   };
 }
 
-export default async function TaskListPage({
-  params,
-  searchParams,
-}: TaskListPageProps) {
+export default async function TaskListPage({ params }: TaskListPageProps) {
   const { teamid: groupId } = await params;
-  const { date, tab } = await searchParams;
+
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ["group", groupId],
+    queryFn: () => getGroup(groupId),
+  });
+
+  const dehydratedState = dehydrate(queryClient);
+
   return (
-    <>
-      <TaskListPageContainer
-        groupId={groupId}
-        selectedTaskListId={tab ?? ""}
-        selectedDate={date}
-      />
-    </>
+    <HydrationBoundary state={dehydratedState}>
+      <TaskListPageContainer groupId={groupId} />
+    </HydrationBoundary>
   );
 }
