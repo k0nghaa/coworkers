@@ -113,7 +113,7 @@ export default function TaskListPageContainer({
     }
 
     loadSelectedTaskList();
-  }, [groupId, selectedTaskListId, selectedDate, isHydrated, isLogin, router]);
+  }, [groupId, selectedTaskListId, selectedDate]);
 
   // Task 클릭 핸들러 - 상세보기용
   const handleTaskClick = (taskId: number) => {
