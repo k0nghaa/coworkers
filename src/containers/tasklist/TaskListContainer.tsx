@@ -45,6 +45,7 @@ export default function TaskListPageContainer({
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
+    staleTime: Infinity, // 자주 변경되지 않는 그룹 데이터의 staleTime을 무한대로 설정하여 불필요한 refetch 방지 + 새로고침 시 다시 fetch 가능
   });
 
   const taskLists = data?.taskLists ?? [];
