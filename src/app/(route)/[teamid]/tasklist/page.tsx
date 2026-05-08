@@ -39,7 +39,11 @@ export default async function TaskListPage({ params }: TaskListPageProps) {
 
   await queryClient.prefetchQuery({
     queryKey: ["group", groupId],
-    queryFn: () => getGroup(groupId),
+    queryFn: async () => {
+      const response = await getGroup(groupId);
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
   });
 
   const dehydratedState = dehydrate(queryClient);
