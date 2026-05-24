@@ -86,17 +86,6 @@ export type CreateTaskRequestBody =
   | TaskRecurringCreateDto["DailyRecurringCreateBody"]
   | TaskRecurringCreateDto["OnceRecurringCreateBody"];
 
-/* tasklist */
-export interface GetTaskListResponse {
-  displayIndex: number;
-  groupId: number;
-  updatedAt: string;
-  createdAt: string;
-  name: string;
-  id: number;
-  tasks: Task[];
-}
-
 export interface UpdateTaskRequestBody {
   name?: string;
   description?: string;
