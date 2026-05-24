@@ -103,6 +103,21 @@ export interface UpdateTaskRequestBody {
   done?: boolean;
 }
 
+export interface UpdateTaskResponse {
+  displayIndex: number;
+  writerId: number;
+  userId: number;
+  deletedAt: string;
+  frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "ONCE";
+  description: string;
+  name: string;
+  recurringId: number;
+  doneAt: string;
+  date: string;
+  updatedAt: string;
+  id: number;
+}
+
 // 모달에서 수정할 때 사용하는 확장 타입
 export interface TaskForEdit extends Task {
   weekDays?: number[]; // recurring에서 가져온 정보

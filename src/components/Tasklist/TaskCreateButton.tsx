@@ -11,17 +11,12 @@ import { toast } from "react-toastify";
 export default function TaskCreateButton({
   onCreateTask,
 }: {
-  onCreateTask: (form: CreateTaskForm) => Promise<void>;
+  onCreateTask: (form: CreateTaskForm) => void;
 }) {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  const handleTaskCreated = async (form: CreateTaskForm) => {
-    try {
-      await onCreateTask(form); // 부모의 handleCreateTask 호출
-      setIsModalOpen(false);
-    } catch {
-      toast.error("할일 생성에 실패했습니다.");
-    }
+  const handleTaskCreated = (form: CreateTaskForm) => {
+    onCreateTask(form); // 부모의 handleCreateTask 호출
   };
 
   return (

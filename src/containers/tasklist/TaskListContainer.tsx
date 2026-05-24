@@ -1,6 +1,6 @@
 "use client";
 
-import { getGroup, GroupDetailResponse } from "@/lib/api/group";
+import { getGroup } from "@/lib/api/group";
 import { createTaskList, getTaskList } from "@/lib/api/tasklist";
 import { useEffect, useMemo, useState } from "react";
 import List from "@/components/Tasklist/List/List";
@@ -11,18 +11,18 @@ import TaskCreateModal, {
   CreateTaskForm,
 } from "@/components/Tasklist/TaskCreateModal";
 import TaskCreateButton from "../../components/Tasklist/TaskCreateButton";
-import { GetTaskListResponse, Task } from "@/lib/types/task";
 import {
-  createTasks,
-  deleteTask,
-  deleteTaskRecurring,
-  updateTask,
-} from "@/lib/api/task";
+  CreateTaskRequestBody,
+  GetTaskListResponse,
+  Task,
+} from "@/lib/types/task";
+import { createTasks, deleteTaskRecurring, updateTask } from "@/lib/api/task";
 import ListCreateButton from "@/components/Tasklist/ListCreateButton";
 import TabList from "@/components/Tasklist/Tab/TabList";
 import { toast } from "react-toastify";
 import { useHeaderStore } from "@/store/headerStore";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getTodayDate } from "@/utils/date";
 
 interface TaskListPageContainerProps {
   groupId: string;
@@ -38,7 +38,11 @@ export default function TaskListPageContainer({
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data: groupData,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["group", groupId],
     queryFn: async () => {
       const response = await getGroup(groupId);
@@ -47,40 +51,236 @@ export default function TaskListPageContainer({
     },
     staleTime: Infinity, // 자주 변경되지 않는 그룹 데이터의 staleTime을 무한대로 설정하여 불필요한 refetch 방지 + 새로고침 시 다시 fetch 가능
   });
+  const taskLists = groupData?.taskLists ?? [];
 
-  const taskLists = data?.taskLists ?? [];
-
-  const selectedTaskListId =
+  const taskListId =
     searchParams.get("tab") || taskLists[0]?.id.toString() || "";
-  const selectedDate = searchParams.get("date");
 
-  const [selectedTaskListData, setSelectedTaskListData] =
-    useState<GetTaskListResponse | null>(null); // 선택된 것
-  const [editTaskId, setEditTaskId] = useState<number | null>(null);
+  const date = searchParams.get("date") || getTodayDate();
+
+  const {
+    data: taskListData,
+    isLoading: isTaskListLoading,
+    isError: isTaskListError,
+  } = useQuery({
+    queryKey: ["tasklist", { groupId, taskListId, date }],
+    queryFn: async () => {
+      const response = await getTaskList(groupId, taskListId, { date });
+      if (!response.success) throw new Error(response.error);
+      return response.data;
+    },
+    enabled: !!taskListId,
+  });
+
+  const queryClient = useQueryClient();
+
+  const { mutate: toggleTask } = useMutation({
+    mutationFn: ({ taskId, done }: { taskId: number; done: boolean }) =>
+      updateTask(groupId, taskListId, taskId, { done }),
+    onMutate: async ({ taskId, done }) => {
+      await queryClient.cancelQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+
+      const previousTaskList = queryClient.getQueryData([
+        "tasklist",
+        { groupId, taskListId, date },
+      ]);
+
+      queryClient.setQueryData<GetTaskListResponse>(
+        ["tasklist", { groupId, taskListId, date }],
+        (oldTaskListData) => {
+          if (!oldTaskListData) return oldTaskListData;
+          return {
+            ...oldTaskListData,
+            tasks: oldTaskListData.tasks.map((t) =>
+              t.id === taskId
+                ? { ...t, doneAt: done ? new Date().toISOString() : null }
+                : t
+            ),
+          };
+        }
+      );
+
+      return { previousTaskList };
+    },
+    onSuccess: (_, variables) => {
+      toast.success(
+        variables.done ? "완료되었습니다." : "완료가 취소되었습니다."
+      );
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(
+        ["tasklist", { groupId, taskListId, date }],
+        context?.previousTaskList
+      );
+      toast.error("완료 상태 변경 중 오류가 발생했습니다.");
+    },
+    onSettled: () => {
+      // 최종 동기화
+      queryClient.invalidateQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+    },
+  });
+
+  const { mutate: updateTaskMutate } = useMutation({
+    mutationFn: ({
+      taskId,
+      ...updates
+    }: {
+      taskId: number;
+    } & Partial<Task>) => updateTask(groupId, taskListId, taskId, updates),
+    onMutate: async ({ taskId, ...updates }) => {
+      await queryClient.cancelQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+
+      const previousTaskList = queryClient.getQueryData([
+        "tasklist",
+        { groupId, taskListId, date },
+      ]);
+
+      queryClient.setQueryData<GetTaskListResponse>(
+        ["tasklist", { groupId, taskListId, date }],
+        (oldTaskListData) => {
+          if (!oldTaskListData) return oldTaskListData;
+          return {
+            ...oldTaskListData,
+            tasks: oldTaskListData.tasks.map((t) =>
+              t.id === taskId ? { ...t, ...updates } : t
+            ),
+          };
+        }
+      );
+
+      return { previousTaskList };
+    },
+    onSuccess: () => {
+      toast.success("할 일이 수정되었습니다.");
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(
+        ["tasklist", { groupId, taskListId, date }],
+        context?.previousTaskList
+      );
+      toast.error("할 일 수정 중 오류가 발생했습니다.");
+    },
+    onSettled: () => {
+      // 최종 동기화
+      queryClient.invalidateQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+    },
+  });
+
+  const { mutate: deleteTaskMutate } = useMutation({
+    mutationFn: ({
+      taskId,
+      recurringId,
+    }: {
+      taskId: number;
+      recurringId: number;
+    }) => deleteTaskRecurring(groupId, taskListId, taskId, recurringId),
+    onMutate: async ({ taskId }) => {
+      await queryClient.cancelQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+
+      const previousTaskList = queryClient.getQueryData([
+        "tasklist",
+        { groupId, taskListId, date },
+      ]);
+
+      queryClient.setQueryData<GetTaskListResponse>(
+        ["tasklist", { groupId, taskListId, date }],
+        (oldTaskListData) => {
+          if (!oldTaskListData) return oldTaskListData;
+          return {
+            ...oldTaskListData,
+            tasks: oldTaskListData.tasks.filter((t) => t.id !== taskId),
+          };
+        }
+      );
+      return { previousTaskList };
+    },
+    onSuccess: () => {
+      toast.success("할 일이 삭제되었습니다.");
+    },
+    onError: (_, __, context) => {
+      queryClient.setQueryData(
+        ["tasklist", { groupId, taskListId, date }],
+        context?.previousTaskList
+      );
+      toast.error("할 일 삭제 중 오류가 발생했습니다.");
+    },
+    onSettled: () => {
+      // 최종 동기화
+      queryClient.invalidateQueries({
+        queryKey: ["tasklist", { groupId, taskListId, date }],
+      });
+    },
+  });
+
+  const { mutate: createTaskMutate, isPending: isTaskCreating } = useMutation({
+    mutationFn: (newTask: CreateTaskRequestBody) =>
+      createTasks(Number(groupId), Number(taskListId), newTask),
+    onSuccess: (_, variables) => {
+      const targetDate = variables.startDate.split("T")[0];
+      const currentDate = searchParams.get("date") ?? getTodayDate();
+
+      if (targetDate !== currentDate) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("date", targetDate);
+        router.push(`${pathname}?${params.toString()}`);
+      } else {
+        queryClient.invalidateQueries({
+          queryKey: ["tasklist", { groupId, taskListId, date }],
+        });
+      }
+
+      toast.success("할 일이 생성되었습니다.");
+    },
+    onError: () => {
+      toast.error("할 일 생성에 실패했습니다.");
+    },
+  });
+
+  const { mutate: createTaskListMutate, isPending: isTaskListCreating } =
+    useMutation({
+      mutationFn: (name: string) => createTaskList(groupId, name),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["group", groupId] });
+        toast.success("할 일 목록이 생성되었습니다.");
+      },
+      onError: () => {
+        toast.error("할 일 목록 생성에 실패했습니다.");
+      },
+    });
 
   const openTaskId = searchParams.get("task");
-  const openTask = selectedTaskListData?.tasks.find(
+  const openTask = taskListData?.tasks.find(
     (task) => task.id.toString() === openTaskId
   );
 
+  const [editTaskId, setEditTaskId] = useState<number | null>(null);
+
   const editingTask = useMemo(() => {
-    return selectedTaskListData?.tasks.find((t) => t.id === editTaskId) ?? null;
-  }, [selectedTaskListData, editTaskId]);
+    return taskListData?.tasks.find((t) => t.id === editTaskId) ?? null;
+  }, [taskListData, editTaskId]);
 
-  // 사이드바 열릴 때 배경 스크롤 방지
-  useEffect(() => {
-    if (openTask) {
-      document.body.classList.add("no-scroll");
-    } else {
-      document.body.classList.remove("no-scroll");
-    }
+  // // 사이드바 열릴 때 배경 스크롤 방지
+  // useEffect(() => {
+  //   if (openTask) {
+  //     document.body.classList.add("no-scroll");
+  //   } else {
+  //     document.body.classList.remove("no-scroll");
+  //   }
 
-    return () => {
-      document.body.classList.remove("no-scroll");
-    };
-  }, [openTask]);
-  // 리스트 페이지 헤더 날짜(date가 있으면 해당날짜, 없으면 "오늘")
-  const baseDate = selectedDate ?? new Date().toISOString();
+  //   return () => {
+  //     document.body.classList.remove("no-scroll");
+  //   };
+  // }, [openTask]);
 
   // 1. 초기 로드: 모든 TaskList 가져오기
   useEffect(() => {
@@ -91,29 +291,7 @@ export default function TaskListPageContainer({
       router.replace("/login");
       return;
     }
-  });
-
-  // 2. 선택된 TaskList 변경시 상세 데이터 가져오기
-  useEffect(() => {
-    async function loadSelectedTaskList() {
-      try {
-        const date = selectedDate || new Date().toISOString().split("T")[0];
-        const response = await getTaskList(groupId, selectedTaskListId, {
-          date,
-        });
-
-        if (response.success) {
-          setSelectedTaskListData(response.data);
-        } else {
-          toast.error("할 일 불러오는 중 오류가 발생했습니다.");
-        }
-      } catch {
-        toast.error("할 일 불러오는 중 오류가 발생했습니다.");
-      }
-    }
-
-    loadSelectedTaskList();
-  }, [groupId, selectedTaskListId, selectedDate]);
+  }, [isHydrated, isLogin, router]);
 
   // Task 클릭 핸들러 - 상세보기용
   const handleTaskClick = (taskId: number) => {
@@ -128,149 +306,26 @@ export default function TaskListPageContainer({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
-  // Task 완료 토글
-  const handleTaskToggle = async (taskId: number) => {
-    if (!selectedTaskListData) return;
+  // Task 완료 토글 핸들러
+  const handleTaskToggle = (taskId: number) => {
+    if (!taskListData) return;
 
-    const targetTask = selectedTaskListData.tasks.find(
-      (task) => task.id === taskId
-    );
-    if (!targetTask) return;
-
-    const willBeDone = !targetTask.doneAt;
-
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
-
-    // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              doneAt: task.doneAt ? null : new Date().toISOString(),
-            }
-          : task
-      ),
-    });
-
-    try {
-      const response = await updateTask(
-        groupId,
-        selectedTaskListId,
-        String(taskId),
-        {
-          done: willBeDone,
-        }
-      );
-
-      if (!response.success) {
-        // Rollback
-        setSelectedTaskListData(originalData);
-        toast.error("완료 상태 변경 중 오류가 발생했습니다.");
-      } else {
-        toast.success(
-          willBeDone ? "완료되었습니다." : "완료가 취소되었습니다."
-        );
-      }
-    } catch {
-      // Rollback
-      setSelectedTaskListData(originalData);
-      toast.error("완료 상태 변경 중 오류가 발생했습니다.");
-    }
+    const newToggleTask = taskListData?.tasks.find((t) => t.id === taskId);
+    toggleTask({ taskId, done: !newToggleTask?.doneAt });
   };
 
-  // Task 업데이트
-  const handleUpdateTask = async (taskId: number, updates: Partial<Task>) => {
-    if (!selectedTaskListData) return;
+  // Task 수정 핸들러
+  const handleUpdateTask = (taskId: number, updates: Partial<Task>) => {
+    if (!taskListData) return;
 
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
-
-    // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.map((task) =>
-        task.id === taskId ? { ...task, ...updates } : task
-      ),
-    });
-
-    try {
-      const response = await updateTask(
-        groupId,
-        selectedTaskListId,
-        String(taskId),
-        updates
-      );
-
-      if (!response.success) {
-        // Rollback
-        setSelectedTaskListData(originalData);
-        toast.error("할 일 수정 중 오류가 발생했습니다.");
-        return;
-      }
-
-      toast.success("할 일이 수정되었습니다.");
-    } catch (error) {
-      // Rollback
-      setSelectedTaskListData(originalData);
-      toast.error("할 일 수정 중 오류가 발생했습니다.");
-    }
-
-    setEditTaskId(null);
+    updateTaskMutate({ taskId, ...updates });
   };
 
   // Task 삭제
-  const handleDeleteTask = async (task: {
-    id: number;
-    recurringId: number;
-  }) => {
-    if (!selectedTaskListData) return;
+  const handleDeleteTask = (taskId: number, recurringId: number) => {
+    if (!taskListData) return;
 
-    // 원본 데이터 저장 (rollback용)
-    const originalData = selectedTaskListData;
-
-    // 낙관적 업데이트
-    setSelectedTaskListData({
-      ...selectedTaskListData,
-      tasks: selectedTaskListData.tasks.filter((t) => t.id !== task.id),
-    });
-
-    try {
-      let response;
-      if (task.recurringId) {
-        response = await deleteTaskRecurring(
-          groupId,
-          selectedTaskListId,
-          String(task.id),
-          String(task.recurringId)
-        );
-      } else {
-        response = await deleteTask(
-          groupId,
-          selectedTaskListId,
-          String(task.id)
-        );
-      }
-
-      if (!response.success) {
-        // Rollback
-        setSelectedTaskListData(originalData);
-        toast.error("할 일 삭제 중 오류가 발생했습니다.");
-        return;
-      }
-
-      toast.success("할 일이 삭제되었습니다.");
-    } catch {
-      // Rollback
-      setSelectedTaskListData(originalData);
-      toast.error("할 일 삭제 중 오류가 발생했습니다.");
-    }
-
-    const params = new URLSearchParams(searchParams);
-    params.delete("task");
-    router.replace(`${pathname}?${params.toString()}`);
+    deleteTaskMutate({ taskId, recurringId });
   };
 
   // Task 편집 (모달 등)
@@ -279,18 +334,14 @@ export default function TaskListPageContainer({
   };
 
   // handleCreateTask 함수만 수정
-  const handleCreateTask = async (form: CreateTaskForm) => {
-    if (!selectedTaskListData) return;
+  const handleCreateTask = (form: CreateTaskForm) => {
+    if (!taskListId) return;
 
-    // form.startDate는 이미 병합된 로컬 시간
-    const localDateTime = form.startDate;
-
-    const createPayload = (() => {
+    const createPayload: CreateTaskRequestBody = (() => {
       const basePayload = {
         name: form.name,
         description: form.description,
-        // 로컬 시간을 UTC로 자동 변환하여 전송
-        startDate: localDateTime.toISOString(),
+        startDate: form.startDate.toISOString(),
       };
 
       switch (form.frequencyType) {
@@ -319,48 +370,10 @@ export default function TaskListPageContainer({
       }
     })();
 
-    const response = await createTasks(
-      groupId,
-      selectedTaskListId,
-      createPayload
-    );
-
-    if (!response.success) {
-      toast.error("할 일 생성에 실패했습니다.");
-      return;
-    }
-
-    toast.success("할 일이 생성되었습니다.");
-
-    // UTC 기준 날짜로 계산 (서버에 저장되는 날짜와 일치)
-    const utcDate = new Date(localDateTime.toISOString());
-    const year = utcDate.getUTCFullYear();
-    const month = utcDate.getUTCMonth();
-    const date = utcDate.getUTCDate();
-
-    const targetDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
-    const currentDate = selectedDate || new Date().toISOString().split("T")[0];
-
-    const params = new URLSearchParams(searchParams);
-
-    if (targetDate !== currentDate) {
-      params.set("date", targetDate);
-      router.push(`${pathname}?${params.toString()}`);
-    } else {
-      const refreshResponse = await getTaskList(groupId, selectedTaskListId, {
-        date: targetDate,
-      });
-
-      if (refreshResponse.success) {
-        setSelectedTaskListData({
-          ...refreshResponse.data,
-          tasks: refreshResponse.data.tasks,
-        });
-      }
-    }
+    createTaskMutate(createPayload);
   };
 
-  const handleCreateList = async (name: string) => {
+  const handleCreateList = (name: string) => {
     if (!name.trim()) return;
 
     // 중복 체크: 현재 팀의 task-list 중 같은 이름이 있는지 확인
@@ -373,25 +386,21 @@ export default function TaskListPageContainer({
       return;
     }
 
-    try {
-      const response = await createTaskList(groupId, name);
-
-      if (!response.success) {
-        toast.error("할 일 목록 생성 중 오류가 발생했습니다.");
-        return;
-      }
-
-      // // API 응답으로 받은 실제 데이터로 업데이트 (tasks 배열 추가)
-      // setTaskLists((prev) => [...prev, { ...response.data, tasks: [] }]);
-
-      toast.success("할 일 목록이 생성되었습니다.");
-    } catch {
-      toast.error("할 일 목록 생성 중 오류가 발생했습니다.");
-    }
+    createTaskListMutate(name);
   };
 
+  useEffect(() => {
+    if (isError) toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
+  }, [isError]);
+
+  useEffect(() => {
+    if (isTaskListError) toast.error("할 일 불러오는 중 오류가 발생했습니다.");
+  }, [isTaskListError]);
+
   if (isLoading) return <div>로딩 중 ...</div>;
-  if (isError) return toast.error("리스트를 가져오는 중 오류가 발생했습니다.");
+  if (isError) return null;
+  if (isTaskListLoading) return <div>로딩 중 ...</div>;
+  if (isTaskListError) return null;
 
   return (
     <div className="relative max-w-1200 mx-auto my-0 sm:px-24 px-16 mb-80">
@@ -399,7 +408,7 @@ export default function TaskListPageContainer({
         <header className="text-xl font-bold mt-40">할 일</header>
 
         <div className="flex justify-between">
-          <DateNavigator baseDate={baseDate} />
+          <DateNavigator baseDate={date} />
           <ListCreateButton onCreate={handleCreateList} />
         </div>
         <div className="h-20">
@@ -408,9 +417,9 @@ export default function TaskListPageContainer({
           </nav>
         </div>
         <main className="flex-1">
-          {selectedTaskListData && (
+          {taskListData && (
             <div className="flex flex-col gap-16">
-              {selectedTaskListData.tasks.length === 0 ? (
+              {taskListData.tasks.length === 0 ? (
                 <div className="text-text-default text-center mx-auto my-0 p-100">
                   <p className="hidden md:block">
                     아직 할 일이 없습니다 <br /> 할 일을 추가해보세요.
@@ -422,7 +431,7 @@ export default function TaskListPageContainer({
               ) : (
                 <>
                   <div className="flex flex-col gap-8">
-                    {selectedTaskListData.tasks.map((task) => (
+                    {taskListData.tasks.map((task) => (
                       <List
                         {...task}
                         key={task.id}
@@ -430,8 +439,15 @@ export default function TaskListPageContainer({
                         isToggle={!!task.doneAt}
                         onToggle={handleTaskToggle}
                         variant="detailed"
-                        onUpdateTask={handleUpdateTask}
-                        onDeleteTask={handleDeleteTask}
+                        onUpdateTask={() =>
+                          handleUpdateTask(task.id, {
+                            name: task.name,
+                            description: task.description,
+                          })
+                        }
+                        onDeleteTask={() =>
+                          handleDeleteTask(task.id, task.recurringId)
+                        }
                         onEditTask={handleEditTask}
                         startDate={task.date}
                       />
@@ -473,10 +489,7 @@ export default function TaskListPageContainer({
                             handleUpdateTask(id, updates);
                           }}
                           onTaskDeleted={(id) =>
-                            handleDeleteTask({
-                              id,
-                              recurringId: openTask.recurringId,
-                            })
+                            handleDeleteTask(id, openTask.recurringId)
                           }
                         />
                       </div>

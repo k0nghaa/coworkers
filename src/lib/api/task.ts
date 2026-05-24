@@ -10,6 +10,7 @@ import {
   GetTasksResponse,
   Task,
   UpdateTaskRequestBody,
+  UpdateTaskResponse,
 } from "../types/task";
 import { revalidatePath } from "next/cache";
 
@@ -17,8 +18,8 @@ import { revalidatePath } from "next/cache";
  * 할 일 생성
  */
 export async function createTasks(
-  groupId: string,
-  taskListId: string,
+  groupId: number,
+  taskListId: number,
   data: CreateTaskRequestBody
 ): Promise<ApiResult<CreateTaskResponse>> {
   try {
@@ -124,9 +125,9 @@ export async function getTask(
 export async function updateTask(
   groupId: string,
   taskListId: string,
-  taskId: string,
+  taskId: number,
   data: UpdateTaskRequestBody
-): Promise<ApiResult<Task>> {
+): Promise<ApiResult<UpdateTaskResponse>> {
   try {
     const response = await fetchApi(
       `${BASE_URL}/groups/${groupId}/task-lists/${taskListId}/tasks/${taskId}`,
@@ -146,7 +147,7 @@ export async function updateTask(
       };
     }
 
-    const result = (await response.json()) as Task;
+    const result = (await response.json()) as UpdateTaskResponse;
 
     // 할 일 완료/취소 시 캐시 무효화
     if (data.done !== undefined) {
@@ -159,9 +160,6 @@ export async function updateTask(
       success: false,
       error: "서버 오류가 발생했습니다.",
     };
-    /**
-     * 할 일 삭제 (개별)
-     */
   }
 }
 
@@ -204,8 +202,8 @@ export async function deleteTask(
 export async function deleteTaskRecurring(
   groupId: string,
   taskListId: string,
-  taskId: string,
-  recurringId: string
+  taskId: number,
+  recurringId: number
 ): Promise<ApiResult<void>> {
   try {
     const response = await fetchApi(

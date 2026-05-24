@@ -34,3 +34,10 @@ export const addDays = (date: Date, diff: number) => {
   next.setDate(date.getDate() + diff);
   return next;
 };
+
+/** yyyy-mm-dd 형식으로 변환하기 위한 유틸
+ *  getTaskList에서 date 파라미터로 사용하기 위함
+ */
+export const getTodayDate = () => {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+};
