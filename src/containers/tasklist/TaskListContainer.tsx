@@ -10,6 +10,7 @@ import TabList from "@/components/Tasklist/Tab/TabList";
 import { toast } from "react-toastify";
 import { useHeaderStore } from "@/store/headerStore";
 import useTaskList from "@/hooks/TaskList/useTaskList";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 interface TaskListPageContainerProps {
   groupId: string;
@@ -18,13 +19,14 @@ interface TaskListPageContainerProps {
 export default function TaskListPageContainer({
   groupId,
 }: TaskListPageContainerProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const isLogin = useHeaderStore((set) => set.isLogin);
   const isHydrated = useHeaderStore((set) => set.isHydrated);
 
   const {
-    router,
-    searchParams,
-    pathname,
     date,
     taskLists,
     taskListData,

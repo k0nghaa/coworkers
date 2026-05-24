@@ -320,10 +320,6 @@ export default function useTaskList({ groupId }: { groupId: string }) {
   };
 
   return {
-    router,
-    searchParams,
-    pathname,
-
     date,
     taskLists,
     taskListData,
