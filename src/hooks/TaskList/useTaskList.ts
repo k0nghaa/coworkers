@@ -246,7 +246,9 @@ export default function useTaskList({ groupId }: { groupId: string }) {
     if (!taskListData) return;
 
     const newToggleTask = taskListData?.tasks.find((t) => t.id === taskId);
-    toggleTask({ taskId, done: !newToggleTask?.doneAt });
+    if (!newToggleTask) return;
+
+    toggleTask({ taskId, done: !newToggleTask.doneAt });
   };
 
   // Task 수정 핸들러
