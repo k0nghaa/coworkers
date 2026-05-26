@@ -42,9 +42,9 @@ export default function List(props: ListProps) {
   // useKebabMenu 훅은 여기서 각 task 별로 사용
   const kebab = useKebabMenu({
     initialContent: name,
-    onSave: (newContent) => onUpdateTask?.(id, { name: newContent }),
+    onInlineSave: (newContent) => onUpdateTask?.(id, { name: newContent }),
     onDelete: () => onDeleteTask?.({ id, recurringId }),
-    onEdit: () => onEditTask?.(id),
+    onEditClick: () => onEditTask?.(id),
     deleteModalTitle: (
       <>
         &apos;{name}&apos; <br />할 일을 정말 삭제하시겠어요?

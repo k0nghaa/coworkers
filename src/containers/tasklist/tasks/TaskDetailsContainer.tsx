@@ -38,12 +38,12 @@ export default function TaskDetailsContainer({
 
   const kebab = useKebabMenu({
     initialContent: task.name,
-    onSave: (newContent) => {
+    onInlineSave: (newContent) => {
       // name만 전달
       onTaskUpdated?.({ id: task.id, name: newContent });
     },
 
-    onEdit: () => setIsEditing(true),
+    onEditClick: () => setIsEditing(true),
 
     onDelete: () => onTaskDeleted?.(task.id),
 

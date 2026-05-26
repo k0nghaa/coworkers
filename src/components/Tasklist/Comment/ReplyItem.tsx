@@ -20,7 +20,7 @@ export default function ReplyItem({
 }: CommentItemProps) {
   const kebab = useKebabMenu({
     initialContent: comment.content,
-    onSave: (newContent) => {
+    onInlineSave: (newContent) => {
       onUpdate(comment.id, newContent);
     },
     onDelete: () => {
