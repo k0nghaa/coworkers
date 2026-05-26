@@ -6,9 +6,6 @@ import { Modal } from "../../Common/Modal";
 import useKebabMenu from "@/hooks/useKebabMenu";
 import Dropdown from "../../Common/Dropdown/Dropdown";
 import { CommentResponse } from "@/lib/types/comment";
-import { useSearchParams } from "next/navigation";
-import { deleteComment, updateComment } from "@/lib/api/comment";
-import { toast } from "react-toastify";
 
 type CommentItemProps = {
   comment: CommentResponse;
@@ -21,38 +18,13 @@ export default function ReplyItem({
   onUpdate,
   onRemove,
 }: CommentItemProps) {
-  const searchParams = useSearchParams();
-  const taskId = searchParams.get("task");
-
   const kebab = useKebabMenu({
     initialContent: comment.content,
-    onSave: async (newContent) => {
-      if (!taskId) return;
-
+    onSave: (newContent) => {
       onUpdate(comment.id, newContent);
-
-      kebab.handleCancelEdit();
-
-      const res = await updateComment(taskId, String(comment.id), newContent);
-
-      if (!res.success) {
-        toast.error("댓글 수정에 실패했습니다.");
-        onUpdate(comment.id, comment.content); // rollback
-      } else {
-        toast.success("댓글이 수정되었습니다.");
-      }
     },
-    onDelete: async () => {
-      if (!taskId) return;
-
-      const res = await deleteComment(taskId, String(comment.id));
-
-      if (res.success) {
-        onRemove(comment.id); // 부모 상태 업데이트
-        toast.success("댓글이 삭제되었습니다.");
-      } else {
-        toast.error("댓글 삭제에 실패했습니다.");
-      }
+    onDelete: () => {
+      onRemove(comment.id);
     },
     deleteModalTitle: "해당 댓글을 정말 삭제하시겠어요?",
   });

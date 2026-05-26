@@ -7,3 +7,7 @@ export type CommentResponse = {
   content: string;
   id: number;
 };
+
+export type CreateCommentRequestBody = {
+  content: string;
+};

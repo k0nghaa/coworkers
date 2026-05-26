@@ -3,6 +3,7 @@
 import { fetchApi } from "@/utils/api";
 import { BASE_URL } from ".";
 import { ApiResult } from "@/lib/types/api";
+import { CreateCommentRequestBody } from "../types/comment";
 
 // 응답 타입 정의
 export type CommentResponse = {
@@ -23,7 +24,7 @@ export type CommentResponse = {
  * 댓글 목록 조회
  */
 export async function getComments(
-  taskId: string
+  taskId: number
 ): Promise<ApiResult<CommentResponse[]>> {
   try {
     const response = await fetchApi(`${BASE_URL}/tasks/${taskId}/comments`);
@@ -52,13 +53,13 @@ export async function getComments(
  * 댓글 생성
  */
 export async function createComment(
-  taskId: string,
-  content: string
+  taskId: number,
+  body: CreateCommentRequestBody
 ): Promise<ApiResult<CommentResponse>> {
   try {
     const response = await fetchApi(`${BASE_URL}/tasks/${taskId}/comments`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -85,16 +86,16 @@ export async function createComment(
  * 댓글 수정
  */
 export async function updateComment(
-  taskId: string,
-  commentId: string,
-  content: string
+  taskId: number,
+  commentId: number,
+  body: CreateCommentRequestBody
 ): Promise<ApiResult<CommentResponse>> {
   try {
     const response = await fetchApi(
       `${BASE_URL}/tasks/${taskId}/comments/${commentId}`,
       {
         method: "PATCH",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify(body),
       }
     );
 
@@ -122,8 +123,8 @@ export async function updateComment(
  * 댓글 삭제
  */
 export async function deleteComment(
-  taskId: string,
-  commentId: string
+  taskId: number,
+  commentId: number
 ): Promise<ApiResult<void>> {
   try {
     const response = await fetchApi(
