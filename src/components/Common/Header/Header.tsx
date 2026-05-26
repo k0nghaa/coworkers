@@ -134,7 +134,7 @@ function Header() {
       }
       await fetchUser();
       showSuccessToast("로그인에 성공했습니다.");
-      router.replace("/3952"); // 프론트엔드팀 페이지로 이동
+      router.replace("/3952/tasklist?tab=5427"); // 프론트엔드팀 할일 목록 페이지로 이동
       return response;
     });
   };
