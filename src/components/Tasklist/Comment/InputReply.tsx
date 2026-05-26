@@ -16,6 +16,7 @@ export default function InputReply({ onCreate }: InputReplyProps) {
       onSubmit={(e) => {
         e.preventDefault();
         onCreate(commentText);
+        setCommentText("");
       }}
       className="flex items-start border-y border-y-border-primary py-13"
     >
