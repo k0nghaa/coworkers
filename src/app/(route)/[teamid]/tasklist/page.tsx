@@ -1,15 +1,18 @@
 import TaskListPageContainer from "@/containers/tasklist/TaskListContainer";
 import { getGroup } from "@/lib/api/group";
+import { getTaskList } from "@/lib/api/tasklist";
+import { getTodayDate } from "@/utils/date";
 import {
   dehydrate,
   HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 type TaskListPageProps = {
   params: Promise<{ teamid: string }>;
-  searchParams: Promise<{ tab?: string; date?: string }>;
+  searchParams: Promise<{ tab: string; date?: string }>;
 };
 
 export async function generateMetadata({
@@ -32,19 +35,35 @@ export async function generateMetadata({
   };
 }
 
-export default async function TaskListPage({ params }: TaskListPageProps) {
+export default async function TaskListPage({
+  params,
+  searchParams,
+}: TaskListPageProps) {
   const { teamid: groupId } = await params;
+  const { tab: taskListId, date: dateParam } = await searchParams;
+  if (!taskListId) notFound();
+  const date = dateParam || getTodayDate();
 
   const queryClient = new QueryClient();
 
-  await queryClient.prefetchQuery({
-    queryKey: ["group", groupId],
-    queryFn: async () => {
-      const response = await getGroup(groupId);
-      if (!response.success) throw new Error(response.error);
-      return response.data;
-    },
-  });
+  await Promise.all([
+    queryClient.prefetchQuery({
+      queryKey: ["group", groupId],
+      queryFn: async () => {
+        const response = await getGroup(groupId);
+        if (!response.success) throw new Error(response.error);
+        return response.data;
+      },
+    }),
+    queryClient.prefetchQuery({
+      queryKey: ["tasklist", { groupId, taskListId, date }],
+      queryFn: async () => {
+        const response = await getTaskList(groupId, taskListId, { date });
+        if (!response.success) throw new Error(response.error);
+        return response.data;
+      },
+    }),
+  ]);
 
   const dehydratedState = dehydrate(queryClient);
 

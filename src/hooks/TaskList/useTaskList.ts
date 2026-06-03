@@ -37,8 +37,7 @@ export default function useTaskList({ groupId }: { groupId: string }) {
   });
 
   const taskLists = groupData?.taskLists ?? [];
-  const taskListId =
-    searchParams.get("tab") || taskLists[0]?.id.toString() || "";
+  const taskListId = searchParams.get("tab") || "";
   const date = searchParams.get("date") || getTodayDate();
 
   const {
@@ -52,6 +51,7 @@ export default function useTaskList({ groupId }: { groupId: string }) {
       if (!response.success) throw new Error(response.error);
       return response.data;
     },
+    staleTime: 5 * 60 * 1000,
     enabled: !!taskListId,
   });
 
